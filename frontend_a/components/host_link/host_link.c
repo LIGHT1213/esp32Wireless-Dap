@@ -23,7 +23,7 @@ static void host_link_task(void *arg)
     setvbuf(stdout, NULL, _IONBF, 0);
 
     printf("\nwireless-dap frontend console\n");
-    printf("commands: help, ping, version, caps, line_reset, target_reset, read_dp_idcode, read_dp <addr>, set_freq <hz>\n");
+    printf("commands: help, ping, version, caps, line_reset, target_reset, halt, read_dp_idcode, read_dp <addr>, read_ap <addr>, write_ap <addr> <value>, set_freq <hz>\n");
 
     while (true) {
         if (!prompt_visible) {
