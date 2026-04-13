@@ -1,0 +1,152 @@
+#include "wifi_link.h"
+
+#include <errno.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+#include "dap_backend.h"
+#include "esp_event.h"
+#include "esp_log.h"
+#include "esp_wifi.h"
+#include "lwip/inet.h"
+#include "sdkconfig.h"
+#include "wdap_protocol.h"
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+static const char *TAG = "wifi_link_b";
+
+static void wifi_event_handler(void *arg,
+                               esp_event_base_t event_base,
+                               int32_t event_id,
+                               void *event_data)
+{
+    (void)arg;
+    (void)event_data;
+
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_START) {
+        ESP_LOGI(TAG, "softap started ssid=%s channel=%d", CONFIG_WDAP_WIFI_SSID, CONFIG_WDAP_WIFI_CHANNEL);
+        return;
+    }
+
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STACONNECTED) {
+        ESP_LOGI(TAG, "frontend station connected");
+        return;
+    }
+
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_AP_STADISCONNECTED) {
+        ESP_LOGW(TAG, "frontend station disconnected");
+    }
+}
+
+static int create_socket(void)
+{
+    const int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+    if (sock < 0) {
+        ESP_LOGE(TAG, "socket create failed: errno=%d", errno);
+        return -1;
+    }
+
+    const struct sockaddr_in bind_addr = {
+        .sin_family = AF_INET,
+        .sin_port = htons(CONFIG_WDAP_UDP_PORT),
+        .sin_addr = {
+            .s_addr = htonl(INADDR_ANY),
+        },
+    };
+
+    if (bind(sock, (const struct sockaddr *)&bind_addr, sizeof(bind_addr)) != 0) {
+        ESP_LOGE(TAG, "socket bind failed: errno=%d", errno);
+        close(sock);
+        return -1;
+    }
+
+    ESP_LOGI(TAG, "udp server listening on %d", CONFIG_WDAP_UDP_PORT);
+    return sock;
+}
+
+static void udp_server_task(void *arg)
+{
+    (void)arg;
+
+    uint8_t rx_buffer[WDAP_MAX_FRAME_SIZE];
+    uint8_t tx_buffer[WDAP_MAX_FRAME_SIZE];
+
+    while (true) {
+        int sock = create_socket();
+        if (sock < 0) {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            continue;
+        }
+
+        while (true) {
+            struct sockaddr_storage peer_addr = {0};
+            socklen_t peer_len = sizeof(peer_addr);
+            const ssize_t rx_len = recvfrom(sock,
+                                            rx_buffer,
+                                            sizeof(rx_buffer),
+                                            0,
+                                            (struct sockaddr *)&peer_addr,
+                                            &peer_len);
+            if (rx_len < 0) {
+                ESP_LOGW(TAG, "recvfrom failed: errno=%d", errno);
+                break;
+            }
+
+            size_t tx_len = 0;
+            const esp_err_t err = dap_backend_process_frame(rx_buffer,
+                                                            (size_t)rx_len,
+                                                            tx_buffer,
+                                                            sizeof(tx_buffer),
+                                                            &tx_len);
+            if (err != ESP_OK) {
+                ESP_LOGW(TAG, "request dropped: %s", esp_err_to_name(err));
+                continue;
+            }
+
+            const ssize_t sent = sendto(sock,
+                                        tx_buffer,
+                                        tx_len,
+                                        0,
+                                        (const struct sockaddr *)&peer_addr,
+                                        peer_len);
+            if (sent != (ssize_t)tx_len) {
+                ESP_LOGW(TAG, "sendto failed: errno=%d", errno);
+            }
+        }
+
+        shutdown(sock, 0);
+        close(sock);
+        vTaskDelay(pdMS_TO_TICKS(250));
+    }
+}
+
+esp_err_t wifi_link_init(void)
+{
+    esp_netif_create_default_wifi_ap();
+
+    const wifi_init_config_t init_cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&init_cfg));
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL));
+
+    wifi_config_t ap_cfg = {
+        .ap = {
+            .channel = CONFIG_WDAP_WIFI_CHANNEL,
+            .max_connection = 1,
+            .authmode = WIFI_AUTH_WPA2_PSK,
+        },
+    };
+
+    strlcpy((char *)ap_cfg.ap.ssid, CONFIG_WDAP_WIFI_SSID, sizeof(ap_cfg.ap.ssid));
+    ap_cfg.ap.ssid_len = strlen(CONFIG_WDAP_WIFI_SSID);
+    strlcpy((char *)ap_cfg.ap.password, CONFIG_WDAP_WIFI_PASSWORD, sizeof(ap_cfg.ap.password));
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap_cfg));
+    ESP_ERROR_CHECK(esp_wifi_start());
+
+    const BaseType_t ok = xTaskCreate(udp_server_task, "udp_server_b", 6144, NULL, 5, NULL);
+    return ok == pdPASS ? ESP_OK : ESP_FAIL;
+}

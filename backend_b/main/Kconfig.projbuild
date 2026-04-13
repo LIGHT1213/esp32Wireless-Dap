@@ -1,0 +1,54 @@
+menu "Wireless DAP Backend"
+
+config WDAP_WIFI_SSID
+    string "SoftAP SSID"
+    default "wireless-dap"
+
+config WDAP_WIFI_PASSWORD
+    string "SoftAP password"
+    default "wirelessdap"
+
+config WDAP_WIFI_CHANNEL
+    int "SoftAP Wi-Fi channel"
+    range 1 13
+    default 6
+
+config WDAP_UDP_PORT
+    int "UDP listen port"
+    range 1024 65535
+    default 3333
+
+config WDAP_BACKEND_MOCK_SWD
+    bool "Enable mock SWD backend"
+    default y
+
+config WDAP_SWD_DEFAULT_HZ
+    int "Default SWD clock"
+    range 1000 4000000
+    default 100000
+
+config WDAP_SWD_DIAG_VERBOSE
+    bool "Enable verbose SWD diagnostics"
+    default y
+
+config WDAP_SWD_SWCLK_GPIO
+    int "SWCLK GPIO"
+    range 0 48
+    default 5
+
+config WDAP_SWD_SWDIO_GPIO
+    int "SWDIO GPIO"
+    range 0 48
+    default 4
+
+config WDAP_TARGET_NRST_GPIO
+    int "Target nRESET GPIO"
+    range 0 48
+    default 6
+
+config WDAP_TARGET_RESET_PULSE_MS
+    int "Target reset pulse in milliseconds"
+    range 1 1000
+    default 20
+
+endmenu

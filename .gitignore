@@ -1,0 +1,9 @@
+.skill-build/
+
+frontend_a/build/
+backend_b/build/
+
+frontend_a/sdkconfig.old
+backend_b/sdkconfig.old
+
+*.tmp

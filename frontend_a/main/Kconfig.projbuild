@@ -1,0 +1,35 @@
+menu "Wireless DAP Frontend"
+
+config WDAP_WIFI_SSID
+    string "Backend SoftAP SSID"
+    default "wireless-dap"
+
+config WDAP_WIFI_PASSWORD
+    string "Backend SoftAP password"
+    default "wirelessdap"
+
+config WDAP_BACKEND_IP
+    string "Backend IP address"
+    default "192.168.4.1"
+
+config WDAP_UDP_PORT
+    int "Backend UDP port"
+    range 1024 65535
+    default 3333
+
+config WDAP_REQUEST_TIMEOUT_MS
+    int "Request timeout in milliseconds"
+    range 100 10000
+    default 1200
+
+config WDAP_FRONTEND_RETRY_COUNT
+    int "Retries per request"
+    range 0 5
+    default 2
+
+config WDAP_HEARTBEAT_INTERVAL_MS
+    int "Heartbeat idle interval in milliseconds"
+    range 1000 60000
+    default 5000
+
+endmenu
