@@ -23,6 +23,7 @@ static const uint32_t STKERRCLR = 0x00000004UL;
 static const uint32_t WDERRCLR = 0x00000008UL;
 static const uint32_t ORUNERRCLR = 0x00000010UL;
 static const uint32_t MASKLANE = 0x00000f00UL;
+static const uint32_t TRNNORMAL = 0x00000000UL;
 static const uint32_t CDBGPWRUPREQ = 0x10000000UL;
 static const uint32_t CDBGPWRUPACK = 0x20000000UL;
 static const uint32_t CSYSPWRUPREQ = 0x40000000UL;
@@ -118,7 +119,7 @@ static esp_err_t swd_debug_power_up(void)
     ESP_RETURN_ON_ERROR(swd_clear_errors(), TAG, "clear dp errors failed");
     ESP_RETURN_ON_ERROR(swd_dp_write(DP_SELECT_ADDR, 0, NULL), TAG, "select dp bank 0 failed");
     ESP_RETURN_ON_ERROR(swd_dp_write(DP_CTRL_STAT_ADDR,
-                                     CSYSPWRUPREQ | CDBGPWRUPREQ | MASKLANE,
+                                     CSYSPWRUPREQ | CDBGPWRUPREQ,
                                      NULL),
                         TAG,
                         "request debug power-up failed");
@@ -127,6 +128,12 @@ static esp_err_t swd_debug_power_up(void)
         uint32_t ctrl_stat = 0;
         ESP_RETURN_ON_ERROR(swd_dp_read(DP_CTRL_STAT_ADDR, &ctrl_stat, NULL), TAG, "read ctrl/stat failed");
         if ((ctrl_stat & (CDBGPWRUPACK | CSYSPWRUPACK)) == (CDBGPWRUPACK | CSYSPWRUPACK)) {
+            ESP_RETURN_ON_ERROR(swd_dp_write(DP_CTRL_STAT_ADDR,
+                                             CSYSPWRUPREQ | CDBGPWRUPREQ | TRNNORMAL | MASKLANE,
+                                             NULL),
+                                TAG,
+                                "configure ctrl/stat failed");
+            ESP_RETURN_ON_ERROR(swd_dp_write(DP_SELECT_ADDR, 0, NULL), TAG, "reselect dp bank 0 failed");
             s_state.debug_powered = true;
             return ESP_OK;
         }
