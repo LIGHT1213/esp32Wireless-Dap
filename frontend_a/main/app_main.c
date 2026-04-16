@@ -1,4 +1,5 @@
 #include "dap_frontend.h"
+#include "cmsis_dap_usb.h"
 #include "host_link.h"
 #include "session_mgr.h"
 #include "wifi_link.h"
@@ -30,7 +31,8 @@ void app_main(void)
     ESP_ERROR_CHECK(wifi_link_init(session_mgr_handle_incoming, NULL));
     ESP_ERROR_CHECK(session_mgr_start());
     ESP_ERROR_CHECK(dap_frontend_init());
+    ESP_ERROR_CHECK(cmsis_dap_usb_init());
     ESP_ERROR_CHECK(host_link_start(dap_frontend_handle_host_line, NULL));
 
-    ESP_LOGI(TAG, "frontend A ready, commands are accepted via console");
+    ESP_LOGI(TAG, "frontend A ready, commands are accepted via console and native USB CMSIS-DAP");
 }

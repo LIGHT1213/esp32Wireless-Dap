@@ -8,4 +8,5 @@ idf_component_register(
         wifi_link
         session_mgr
         dap_frontend
+        cmsis_dap_usb
 )

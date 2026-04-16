@@ -2,6 +2,7 @@
 
 frontend_a/build/
 backend_b/build/
+frontend_a/managed_components/
 
 frontend_a/sdkconfig.old
 backend_b/sdkconfig.old
