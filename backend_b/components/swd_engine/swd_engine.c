@@ -322,6 +322,10 @@ esp_err_t swd_engine_target_halt(uint32_t *dhcsr)
     }
 
     ESP_RETURN_ON_ERROR(ensure_link_ready(), TAG, "swd link not ready");
+    if (!s_state.debug_powered) {
+        uint32_t idcode = 0;
+        ESP_RETURN_ON_ERROR(swd_probe_idcode(&idcode, NULL), TAG, "probe idcode before halt failed");
+    }
     ESP_RETURN_ON_ERROR(swd_memap_write_word(DBG_HCSR, DBGKEY | C_DEBUGEN | C_HALT), TAG, "write DHCSR failed");
 
     for (int i = 0; i < HALT_POLL_RETRIES; ++i) {

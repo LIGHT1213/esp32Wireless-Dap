@@ -7,6 +7,12 @@
 
 static const char *TAG = "board_support";
 
+#ifdef CONFIG_WDAP_TARGET_RESET_SETTLE_MS
+#define WDAP_TARGET_RESET_SETTLE_MS CONFIG_WDAP_TARGET_RESET_SETTLE_MS
+#else
+#define WDAP_TARGET_RESET_SETTLE_MS 5U
+#endif
+
 static board_support_pins_t s_pins = {
     .swclk_gpio = CONFIG_WDAP_SWD_SWCLK_GPIO,
     .swdio_gpio = CONFIG_WDAP_SWD_SWDIO_GPIO,
@@ -42,5 +48,6 @@ esp_err_t board_support_target_reset_pulse(uint32_t pulse_ms)
     ESP_ERROR_CHECK(gpio_set_level((gpio_num_t)s_pins.nreset_gpio, 0));
     esp_rom_delay_us(pulse_ms * 1000U);
     ESP_ERROR_CHECK(gpio_set_level((gpio_num_t)s_pins.nreset_gpio, 1));
+    esp_rom_delay_us(WDAP_TARGET_RESET_SETTLE_MS * 1000U);
     return ESP_OK;
 }

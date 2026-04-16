@@ -51,4 +51,9 @@ config WDAP_TARGET_RESET_PULSE_MS
     range 1 1000
     default 20
 
+config WDAP_TARGET_RESET_SETTLE_MS
+    int "Target reset settle time in milliseconds"
+    range 0 1000
+    default 5
+
 endmenu
