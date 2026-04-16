@@ -40,6 +40,7 @@ static void print_help(void)
     printf("halt\n");
     printf("read_dp_idcode\n");
     printf("read_dp <addr>\n");
+    printf("write_dp <addr> <value>\n");
     printf("read_ap <addr>\n");
     printf("write_ap <addr> <value>\n");
     printf("set_freq <hz>\n");
@@ -164,6 +165,22 @@ void dap_frontend_handle_host_line(const char *line, void *ctx)
             const wdap_reg_value_response_t *value = (const wdap_reg_value_response_t *)response.payload;
             printf("dp[0x%02x]=0x%08" PRIx32 "\n", request.addr, value->value);
         }
+        return;
+    }
+
+    if (strcmp(token, "write_dp") == 0) {
+        const char *addr_text = strtok_r(NULL, " ", &saveptr);
+        const char *value_text = strtok_r(NULL, " ", &saveptr);
+        if (addr_text == NULL || value_text == NULL) {
+            printf("usage: write_dp <addr> <value>\n");
+            return;
+        }
+
+        wdap_reg_write_request_t request = {
+            .addr = (uint8_t)strtoul(addr_text, NULL, 0),
+            .value = (uint32_t)strtoul(value_text, NULL, 0),
+        };
+        (void)transact(WDAP_CMD_SWD_WRITE_DP, &request, sizeof(request), &response);
         return;
     }
 

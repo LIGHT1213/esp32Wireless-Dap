@@ -41,6 +41,7 @@ static const uint32_t C_DEBUGEN = 0x00000001UL;
 static const uint32_t C_HALT = 0x00000002UL;
 static const uint32_t S_HALT = 0x00020000UL;
 static const int HALT_POLL_RETRIES = 50;
+static const int SWD_INIT_RETRIES = 3;
 
 typedef struct {
     bool mock_mode;
@@ -68,6 +69,36 @@ static esp_err_t ack_error_to_esp(uint8_t ack, esp_err_t fallback)
     default:
         return fallback;
     }
+}
+
+static esp_err_t swd_transport_resync(void)
+{
+    esp_err_t err = swd_phy_line_reset();
+    if (err == ESP_OK) {
+        err = swd_phy_jtag_to_swd();
+    }
+    if (err == ESP_OK) {
+        err = swd_phy_line_reset();
+    }
+    if (err == ESP_OK) {
+        s_state.link_synchronized = true;
+        s_state.debug_powered = false;
+        s_state.dp_select = UINT32_MAX;
+    }
+    return err;
+}
+
+static esp_err_t swd_probe_idcode(uint32_t *value, uint8_t *ack)
+{
+    ESP_RETURN_ON_ERROR(swd_transport_resync(), TAG, "transport resync failed");
+    ESP_RETURN_ON_ERROR(swd_phy_write_idle_bits(0, 8), TAG, "idle low preamble failed");
+
+    uint8_t phy_ack = WDAP_ACK_NONE;
+    const esp_err_t err = swd_phy_read_dp(0x00U, value, &phy_ack);
+    if (ack != NULL) {
+        *ack = phy_ack;
+    }
+    return ack_error_to_esp(phy_ack, err);
 }
 
 static esp_err_t swd_dp_write(uint8_t addr, uint32_t value, uint8_t *ack_out)
@@ -116,28 +147,40 @@ static esp_err_t swd_debug_power_up(void)
         return ESP_OK;
     }
 
-    ESP_RETURN_ON_ERROR(swd_clear_errors(), TAG, "clear dp errors failed");
-    ESP_RETURN_ON_ERROR(swd_dp_write(DP_SELECT_ADDR, 0, NULL), TAG, "select dp bank 0 failed");
-    ESP_RETURN_ON_ERROR(swd_dp_write(DP_CTRL_STAT_ADDR,
-                                     CSYSPWRUPREQ | CDBGPWRUPREQ,
-                                     NULL),
-                        TAG,
-                        "request debug power-up failed");
-
-    for (int i = 0; i < HALT_POLL_RETRIES; ++i) {
-        uint32_t ctrl_stat = 0;
-        ESP_RETURN_ON_ERROR(swd_dp_read(DP_CTRL_STAT_ADDR, &ctrl_stat, NULL), TAG, "read ctrl/stat failed");
-        if ((ctrl_stat & (CDBGPWRUPACK | CSYSPWRUPACK)) == (CDBGPWRUPACK | CSYSPWRUPACK)) {
-            ESP_RETURN_ON_ERROR(swd_dp_write(DP_CTRL_STAT_ADDR,
-                                             CSYSPWRUPREQ | CDBGPWRUPREQ | TRNNORMAL | MASKLANE,
-                                             NULL),
-                                TAG,
-                                "configure ctrl/stat failed");
-            ESP_RETURN_ON_ERROR(swd_dp_write(DP_SELECT_ADDR, 0, NULL), TAG, "reselect dp bank 0 failed");
-            s_state.debug_powered = true;
-            return ESP_OK;
+    for (int retry = 0; retry < SWD_INIT_RETRIES; ++retry) {
+        if (retry > 0) {
+            ESP_LOGW(TAG, "retrying debug power-up after resync, attempt=%d", retry + 1);
+            ESP_RETURN_ON_ERROR(swd_transport_resync(), TAG, "transport resync failed");
         }
-        esp_rom_delay_us(1000);
+
+        if (swd_clear_errors() != ESP_OK) {
+            continue;
+        }
+        if (swd_dp_write(DP_SELECT_ADDR, 0, NULL) != ESP_OK) {
+            continue;
+        }
+        if (swd_dp_write(DP_CTRL_STAT_ADDR, CSYSPWRUPREQ | CDBGPWRUPREQ, NULL) != ESP_OK) {
+            continue;
+        }
+
+        for (int i = 0; i < HALT_POLL_RETRIES; ++i) {
+            uint32_t ctrl_stat = 0;
+            if (swd_dp_read(DP_CTRL_STAT_ADDR, &ctrl_stat, NULL) != ESP_OK) {
+                break;
+            }
+            if ((ctrl_stat & (CDBGPWRUPACK | CSYSPWRUPACK)) == (CDBGPWRUPACK | CSYSPWRUPACK)) {
+                ESP_LOGI(TAG, "debug power-up ack ctrl_stat=0x%08" PRIx32, ctrl_stat);
+                ESP_RETURN_ON_ERROR(swd_dp_write(DP_CTRL_STAT_ADDR,
+                                                 CSYSPWRUPREQ | CDBGPWRUPREQ | TRNNORMAL | MASKLANE,
+                                                 NULL),
+                                    TAG,
+                                    "configure ctrl/stat failed");
+                ESP_RETURN_ON_ERROR(swd_dp_write(DP_SELECT_ADDR, 0, NULL), TAG, "reselect dp bank 0 failed");
+                s_state.debug_powered = true;
+                return ESP_OK;
+            }
+            esp_rom_delay_us(1000);
+        }
     }
 
     return ESP_ERR_TIMEOUT;
@@ -296,6 +339,23 @@ esp_err_t swd_engine_target_halt(uint32_t *dhcsr)
     return ESP_ERR_TIMEOUT;
 }
 
+esp_err_t swd_engine_read_dp_idcode(uint32_t *value, uint8_t *ack)
+{
+    if (value == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (s_state.mock_mode) {
+        if (ack != NULL) {
+            *ack = WDAP_ACK_OK;
+        }
+        *value = MOCK_DP_IDCODE;
+        return ESP_OK;
+    }
+
+    return swd_probe_idcode(value, ack);
+}
+
 esp_err_t swd_engine_read_dp(uint8_t addr, uint32_t *value, uint8_t *ack)
 {
     if (value == NULL) {
@@ -313,7 +373,11 @@ esp_err_t swd_engine_read_dp(uint8_t addr, uint32_t *value, uint8_t *ack)
     ESP_RETURN_ON_ERROR(ensure_link_ready(), TAG, "swd link not ready");
 
     uint8_t phy_ack = WDAP_ACK_NONE;
-    const esp_err_t err = swd_phy_read_dp(addr, value, &phy_ack);
+    esp_err_t err = swd_phy_read_dp(addr, value, &phy_ack);
+    if (err != ESP_OK && addr == 0x00U) {
+        ESP_LOGW(TAG, "dp read failed, attempting transport resync");
+        err = swd_probe_idcode(value, &phy_ack);
+    }
     if (ack != NULL) {
         *ack = phy_ack;
     }
@@ -360,6 +424,7 @@ esp_err_t swd_engine_read_ap(uint8_t addr, uint32_t *value, uint8_t *ack)
     uint32_t dummy = 0;
     uint8_t ap_ack = WDAP_ACK_NONE;
     ESP_RETURN_ON_ERROR(swd_ap_read_raw(addr, &dummy, &ap_ack), TAG, "prime ap read failed");
+    ESP_LOGI(TAG, "ap raw read addr=0x%02x prime_ack=0x%02x dummy=0x%08" PRIx32, addr, ap_ack, dummy);
 
     uint32_t result = 0;
     uint8_t dp_ack = WDAP_ACK_NONE;
@@ -390,6 +455,7 @@ esp_err_t swd_engine_write_ap(uint8_t addr, uint32_t value, uint8_t *ack)
 
     uint8_t ap_ack = WDAP_ACK_NONE;
     ESP_RETURN_ON_ERROR(swd_ap_write_raw(addr, value, &ap_ack), TAG, "ap write failed");
+    ESP_LOGI(TAG, "ap raw write addr=0x%02x ack=0x%02x value=0x%08" PRIx32, addr, ap_ack, value);
 
     uint32_t flush = 0;
     uint8_t dp_ack = WDAP_ACK_NONE;

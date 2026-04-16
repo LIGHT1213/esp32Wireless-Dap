@@ -20,12 +20,12 @@ config WDAP_UDP_PORT
 config WDAP_REQUEST_TIMEOUT_MS
     int "Request timeout in milliseconds"
     range 100 10000
-    default 1200
+    default 3000
 
 config WDAP_FRONTEND_RETRY_COUNT
     int "Retries per request"
     range 0 5
-    default 2
+    default 1
 
 config WDAP_HEARTBEAT_INTERVAL_MS
     int "Heartbeat idle interval in milliseconds"

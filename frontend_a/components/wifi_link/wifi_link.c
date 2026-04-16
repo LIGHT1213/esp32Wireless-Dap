@@ -164,6 +164,7 @@ esp_err_t wifi_link_init(wifi_link_rx_cb_t callback, void *ctx)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg));
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
 
     const BaseType_t ok = xTaskCreate(rx_task, "wifi_rx_a", 4096, NULL, 5, &s_rx_task_handle);
     if (ok != pdPASS) {

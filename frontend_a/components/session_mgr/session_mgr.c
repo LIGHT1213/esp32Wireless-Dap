@@ -28,7 +28,7 @@ typedef struct {
 
 static session_mgr_state_t s_state;
 
-static void heartbeat_task(void *arg)
+static void __attribute__((unused)) heartbeat_task(void *arg)
 {
     (void)arg;
 
@@ -87,13 +87,8 @@ esp_err_t session_mgr_init(void)
 
 esp_err_t session_mgr_start(void)
 {
-    const BaseType_t ok = xTaskCreate(heartbeat_task,
-                                      "session_hb",
-                                      4096,
-                                      NULL,
-                                      3,
-                                      NULL);
-    return ok == pdPASS ? ESP_OK : ESP_FAIL;
+    ESP_LOGI(TAG, "heartbeat task disabled during hardware bring-up");
+    return ESP_OK;
 }
 
 bool session_mgr_is_ready(void)

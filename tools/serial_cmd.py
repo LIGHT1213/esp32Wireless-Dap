@@ -27,11 +27,20 @@ def read_until(ser, patterns, timeout_s):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("port")
-    parser.add_argument("command")
+    parser.add_argument("command", nargs="?")
+    parser.add_argument("--cmd", action="append", dest="commands")
     parser.add_argument("--baud", type=int, default=115200)
     parser.add_argument("--boot-wait", type=float, default=2.0)
     parser.add_argument("--timeout", type=float, default=6.0)
     args = parser.parse_args()
+
+    commands = []
+    if args.command is not None:
+        commands.append(args.command)
+    if args.commands:
+        commands.extend(args.commands)
+    if not commands:
+        raise SystemExit("no command provided")
 
     with serial.Serial(args.port, args.baud, timeout=0.2) as ser:
         ser.reset_input_buffer()
@@ -39,11 +48,12 @@ def main():
         time.sleep(args.boot_wait)
 
         # Drain current boot/log noise and wait for prompt if present.
-        _ = read_until(ser, [r"wdap> "], 1.5)
+        output = read_until(ser, [r"wdap> "], 1.5)
 
-        ser.write((args.command + "\r").encode("utf-8"))
-        ser.flush()
-        output = read_until(ser, [r"wdap> "], args.timeout)
+        for command in commands:
+            ser.write((command + "\r").encode("utf-8"))
+            ser.flush()
+            output += read_until(ser, [r"wdap> "], args.timeout)
 
     sys.stdout.write(output)
 

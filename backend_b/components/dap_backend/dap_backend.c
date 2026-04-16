@@ -127,7 +127,9 @@ static esp_err_t handle_read_dp(uint8_t addr, wdap_message_t *response)
 {
     uint8_t ack = WDAP_ACK_NONE;
     wdap_reg_value_response_t payload = {0};
-    const esp_err_t err = swd_engine_read_dp(addr, &payload.value, &ack);
+    const esp_err_t err = (addr == 0x00U)
+                              ? swd_engine_read_dp_idcode(&payload.value, &ack)
+                              : swd_engine_read_dp(addr, &payload.value, &ack);
     response->ack = ack;
     if (err != ESP_OK) {
         return err;
