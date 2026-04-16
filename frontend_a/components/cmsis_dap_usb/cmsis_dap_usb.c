@@ -257,6 +257,18 @@ static uint8_t do_target_reset(void)
     return (response.status == WDAP_STATUS_OK) ? DAP_OK : DAP_ERROR;
 }
 
+static uint8_t do_target_reset_drive(bool asserted)
+{
+    wdap_target_reset_drive_request_t request = {
+        .asserted = asserted ? 1U : 0U,
+    };
+    wdap_message_t response = {0};
+    if (transact(WDAP_CMD_TARGET_RESET_DRIVE, &request, sizeof(request), &response) != ESP_OK) {
+        return DAP_ERROR;
+    }
+    return (response.status == WDAP_STATUS_OK) ? DAP_OK : DAP_ERROR;
+}
+
 static uint8_t do_set_clock(uint32_t hz)
 {
     wdap_set_swd_freq_request_t request = {
@@ -486,9 +498,6 @@ static size_t handle_dap_swj_pins(const uint8_t *request, uint8_t *response)
     const uint8_t value = request[1];
     const uint8_t select = request[2];
 
-    if ((select & BIT(DAP_SWJ_nRESET)) != 0U && (value & BIT(DAP_SWJ_nRESET)) == 0U) {
-        (void)do_target_reset();
-    }
     if ((select & BIT(DAP_SWJ_SWCLK_TCK)) != 0U) {
         if ((value & BIT(DAP_SWJ_SWCLK_TCK)) != 0U) {
             s_state.swj_pins |= BIT(DAP_SWJ_SWCLK_TCK);
@@ -503,8 +512,18 @@ static size_t handle_dap_swj_pins(const uint8_t *request, uint8_t *response)
             s_state.swj_pins &= (uint8_t)~BIT(DAP_SWJ_SWDIO_TMS);
         }
     }
-
-    s_state.swj_pins |= BIT(DAP_SWJ_nRESET);
+    if ((select & BIT(DAP_SWJ_nRESET)) != 0U) {
+        const bool deasserted = (value & BIT(DAP_SWJ_nRESET)) != 0U;
+        if (do_target_reset_drive(!deasserted) == DAP_OK) {
+            if (deasserted) {
+                s_state.swj_pins |= BIT(DAP_SWJ_nRESET);
+            } else {
+                s_state.swj_pins &= (uint8_t)~BIT(DAP_SWJ_nRESET);
+            }
+        }
+    } else {
+        s_state.swj_pins |= BIT(DAP_SWJ_nRESET);
+    }
     response[1] = s_state.swj_pins;
     return 2;
 }

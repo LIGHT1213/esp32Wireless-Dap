@@ -1,6 +1,9 @@
 #include "board_support.h"
 
+#include <stdbool.h>
+
 #include "driver/gpio.h"
+#include "esp_check.h"
 #include "esp_log.h"
 #include "esp_rom_sys.h"
 #include "sdkconfig.h"
@@ -45,9 +48,15 @@ const board_support_pins_t *board_support_get_pins(void)
 
 esp_err_t board_support_target_reset_pulse(uint32_t pulse_ms)
 {
-    ESP_ERROR_CHECK(gpio_set_level((gpio_num_t)s_pins.nreset_gpio, 0));
+    ESP_RETURN_ON_ERROR(board_support_target_reset_drive(true), TAG, "drive nreset low failed");
     esp_rom_delay_us(pulse_ms * 1000U);
-    ESP_ERROR_CHECK(gpio_set_level((gpio_num_t)s_pins.nreset_gpio, 1));
+    ESP_RETURN_ON_ERROR(board_support_target_reset_drive(false), TAG, "drive nreset high failed");
     esp_rom_delay_us(WDAP_TARGET_RESET_SETTLE_MS * 1000U);
+    return ESP_OK;
+}
+
+esp_err_t board_support_target_reset_drive(bool asserted)
+{
+    ESP_ERROR_CHECK(gpio_set_level((gpio_num_t)s_pins.nreset_gpio, asserted ? 0 : 1));
     return ESP_OK;
 }

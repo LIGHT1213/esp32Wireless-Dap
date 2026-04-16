@@ -115,6 +115,17 @@ static esp_err_t handle_target_reset(wdap_message_t *response)
     return swd_engine_target_reset();
 }
 
+static esp_err_t handle_target_reset_drive(const wdap_message_t *request, wdap_message_t *response)
+{
+    if (request->payload_len < sizeof(wdap_target_reset_drive_request_t)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const wdap_target_reset_drive_request_t *drive = (const wdap_target_reset_drive_request_t *)request->payload;
+    response->ack = WDAP_ACK_OK;
+    return swd_engine_target_reset_drive(drive->asserted != 0U);
+}
+
 static esp_err_t handle_target_halt(wdap_message_t *response)
 {
     wdap_reg_value_response_t payload = {0};
@@ -192,6 +203,8 @@ static esp_err_t handle_request(const wdap_message_t *request, wdap_message_t *r
         return handle_line_reset(response);
     case WDAP_CMD_TARGET_RESET:
         return handle_target_reset(response);
+    case WDAP_CMD_TARGET_RESET_DRIVE:
+        return handle_target_reset_drive(request, response);
     case WDAP_CMD_TARGET_HALT:
         return handle_target_halt(response);
     case WDAP_CMD_READ_DP_IDCODE:

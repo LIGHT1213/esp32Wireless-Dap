@@ -312,6 +312,16 @@ esp_err_t swd_engine_target_reset(void)
     return board_support_target_reset_pulse(CONFIG_WDAP_TARGET_RESET_PULSE_MS);
 }
 
+esp_err_t swd_engine_target_reset_drive(bool asserted)
+{
+    if (asserted) {
+        s_state.link_synchronized = false;
+        s_state.debug_powered = false;
+        s_state.dp_select = UINT32_MAX;
+    }
+    return board_support_target_reset_drive(asserted);
+}
+
 esp_err_t swd_engine_target_halt(uint32_t *dhcsr)
 {
     if (s_state.mock_mode) {

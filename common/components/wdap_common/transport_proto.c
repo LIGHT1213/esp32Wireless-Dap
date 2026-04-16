@@ -173,6 +173,8 @@ const char *wdap_cmd_to_string(uint8_t cmd)
         return "SWD_WRITE_BLOCK";
     case WDAP_CMD_TARGET_HALT:
         return "TARGET_HALT";
+    case WDAP_CMD_TARGET_RESET_DRIVE:
+        return "TARGET_RESET_DRIVE";
     default:
         return "UNKNOWN";
     }

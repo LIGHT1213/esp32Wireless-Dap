@@ -33,6 +33,7 @@ typedef enum {
     WDAP_CMD_SWD_READ_BLOCK = 0x18,
     WDAP_CMD_SWD_WRITE_BLOCK = 0x19,
     WDAP_CMD_TARGET_HALT = 0x1A,
+    WDAP_CMD_TARGET_RESET_DRIVE = 0x1B,
 } wdap_cmd_t;
 
 typedef enum {
@@ -111,6 +112,10 @@ typedef struct {
 typedef struct {
     uint32_t value;
 } wdap_reg_value_response_t;
+
+typedef struct {
+    uint8_t asserted;
+} wdap_target_reset_drive_request_t;
 
 const char *wdap_cmd_to_string(uint8_t cmd);
 const char *wdap_status_to_string(uint8_t status);
