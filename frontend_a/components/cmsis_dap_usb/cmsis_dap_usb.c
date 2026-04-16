@@ -11,6 +11,7 @@
 #include "esp_check.h"
 #include "esp_log.h"
 #include "esp_mac.h"
+#include "esp_rom_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
@@ -83,6 +84,7 @@ static const char *TAG = "cmsis_dap_usb";
 #define DAP_TRANSFER_MISMATCH BIT(4)
 
 #define CMSIS_DAP_CAP_SWD BIT(0)
+#define CMSIS_DAP_CAP_ATOMIC BIT(4)
 
 #define TUSB_DESC_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_HID * TUD_HID_INOUT_DESC_LEN + CFG_TUD_VENDOR * TUD_VENDOR_DESC_LEN)
 #define CMSIS_DAP_BOS_TOTAL_LEN (TUD_BOS_DESC_LEN + TUD_BOS_MICROSOFT_OS_DESC_LEN)
@@ -383,7 +385,7 @@ static size_t handle_dap_info(const uint8_t *request, uint8_t *response)
         break;
     case DAP_ID_CAPABILITIES:
         response[1] = 1;
-        response[2] = CMSIS_DAP_CAP_SWD;
+        response[2] = CMSIS_DAP_CAP_SWD | CMSIS_DAP_CAP_ATOMIC;
         return 3;
     case DAP_ID_PACKET_COUNT:
         response[1] = 1;
@@ -499,6 +501,7 @@ static size_t handle_dap_swj_pins(const uint8_t *request, uint8_t *response)
 {
     const uint8_t value = request[1];
     const uint8_t select = request[2];
+    const uint32_t wait_us = read_u32_le(&request[3]);
 
     if ((select & BIT(DAP_SWJ_SWCLK_TCK)) != 0U) {
         if ((value & BIT(DAP_SWJ_SWCLK_TCK)) != 0U) {
@@ -525,6 +528,11 @@ static size_t handle_dap_swj_pins(const uint8_t *request, uint8_t *response)
         }
     } else {
         s_state.swj_pins |= BIT(DAP_SWJ_nRESET);
+    }
+
+    if (wait_us != 0U) {
+        const uint32_t clamped_wait_us = (wait_us > 3000000U) ? 3000000U : wait_us;
+        esp_rom_delay_us(clamped_wait_us);
     }
     response[1] = s_state.swj_pins;
     return 2;
