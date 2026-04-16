@@ -28,6 +28,7 @@ static const char *TAG = "cmsis_dap_usb";
 #define CMSIS_DAP_VENDOR_EP_IN 0x82
 #define CMSIS_DAP_USB_QUEUE_LEN 4U
 #define CMSIS_DAP_VENDOR_REQUEST_MICROSOFT 0x20U
+#define CMSIS_DAP_MAX_SWJ_CLOCK_HZ 1000000U
 
 #define ID_DAP_INFO 0x00U
 #define ID_DAP_HOST_STATUS 0x01U
@@ -271,8 +272,9 @@ static uint8_t do_target_reset_drive(bool asserted)
 
 static uint8_t do_set_clock(uint32_t hz)
 {
+    const uint32_t applied_hz = (hz > CMSIS_DAP_MAX_SWJ_CLOCK_HZ) ? CMSIS_DAP_MAX_SWJ_CLOCK_HZ : hz;
     wdap_set_swd_freq_request_t request = {
-        .hz = hz,
+        .hz = applied_hz,
     };
     wdap_message_t response = {0};
     if (transact(WDAP_CMD_SET_SWD_FREQ, &request, sizeof(request), &response) != ESP_OK) {
@@ -281,7 +283,7 @@ static uint8_t do_set_clock(uint32_t hz)
     if (response.status != WDAP_STATUS_OK) {
         return DAP_ERROR;
     }
-    s_state.swj_clock_hz = hz;
+    s_state.swj_clock_hz = applied_hz;
     return DAP_OK;
 }
 
@@ -654,6 +656,9 @@ static size_t process_request(const cmsis_dap_packet_t *request, uint8_t *respon
 {
     memset(response, 0, CMSIS_DAP_PACKET_SIZE);
     response[0] = request->data[0];
+    if (request->transport == CMSIS_DAP_TRANSPORT_HID) {
+        ESP_LOGI(TAG, "hid process cmd=0x%02x len=%u", request->data[0], request->len);
+    }
 
     switch (request->data[0]) {
     case ID_DAP_INFO:
@@ -778,6 +783,8 @@ void tud_hid_set_report_cb(uint8_t instance,
     packet.len = bufsize;
     packet.transport = CMSIS_DAP_TRANSPORT_HID;
     memcpy(packet.data, buffer, bufsize > CMSIS_DAP_PACKET_SIZE ? CMSIS_DAP_PACKET_SIZE : bufsize);
+    ESP_LOGI(TAG, "hid rx report_id=%u type=%u len=%u cmd=0x%02x b0=0x%02x b1=0x%02x",
+             report_id, report_type, packet.len, packet.data[0], packet.data[0], packet.data[1]);
 
     if (s_state.rx_queue == NULL || xQueueSend(s_state.rx_queue, &packet, 0) != pdTRUE) {
         ESP_LOGW(TAG, "drop HID request because queue is full");
