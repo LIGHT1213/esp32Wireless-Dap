@@ -1,6 +1,7 @@
 #include "cmsis_dap_usb.h"
 
 #include <stdbool.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -109,6 +110,7 @@ typedef struct {
     uint16_t retry_count;
     uint16_t match_retry;
     uint32_t match_mask;
+    uint32_t dp_select;
     uint32_t swj_clock_hz;
     char serial[13];
     bool initialized;
@@ -120,6 +122,7 @@ static cmsis_dap_state_t s_state = {
     .retry_count = 5,
     .match_retry = 5,
     .match_mask = 0xFFFFFFFFU,
+    .dp_select = 0,
     .swj_clock_hz = 100000U,
 };
 
@@ -276,7 +279,7 @@ static esp_err_t do_read_reg(bool apndp, uint8_t addr, uint32_t *value, uint8_t 
     esp_err_t err;
     if (apndp) {
         wdap_reg_read_request_t request = {
-            .addr = addr,
+            .addr = (uint8_t)((s_state.dp_select & 0xF0U) | (addr & 0x0CU)),
         };
         err = transact(WDAP_CMD_SWD_READ_AP, &request, sizeof(request), &response);
     } else if (addr == 0x00U) {
@@ -290,6 +293,12 @@ static esp_err_t do_read_reg(bool apndp, uint8_t addr, uint32_t *value, uint8_t 
 
     *response_value = wdap_ack_to_dap(response.ack, err, response.status);
     if (err != ESP_OK || response.status != WDAP_STATUS_OK || response.payload_len < sizeof(wdap_reg_value_response_t)) {
+        ESP_LOGW(TAG, "read %s addr=0x%02x failed err=%s status=%u ack=0x%02x",
+                 apndp ? "AP" : "DP",
+                 apndp ? (uint8_t)((s_state.dp_select & 0xF0U) | (addr & 0x0CU)) : addr,
+                 esp_err_to_name(err),
+                 response.status,
+                 response.ack);
         return ESP_FAIL;
     }
 
@@ -301,7 +310,7 @@ static esp_err_t do_write_reg(bool apndp, uint8_t addr, uint32_t value, uint8_t 
 {
     wdap_message_t response = {0};
     wdap_reg_write_request_t request = {
-        .addr = addr,
+        .addr = apndp ? (uint8_t)((s_state.dp_select & 0xF0U) | (addr & 0x0CU)) : addr,
         .value = value,
     };
     const esp_err_t err = transact(apndp ? WDAP_CMD_SWD_WRITE_AP : WDAP_CMD_SWD_WRITE_DP,
@@ -309,7 +318,17 @@ static esp_err_t do_write_reg(bool apndp, uint8_t addr, uint32_t value, uint8_t 
                                    sizeof(request),
                                    &response);
     *response_value = wdap_ack_to_dap(response.ack, err, response.status);
+    if (!apndp && addr == 0x08U && err == ESP_OK && response.status == WDAP_STATUS_OK) {
+        s_state.dp_select = value;
+    }
     if (err != ESP_OK || response.status != WDAP_STATUS_OK) {
+        ESP_LOGW(TAG, "write %s addr=0x%02x value=0x%08" PRIx32 " failed err=%s status=%u ack=0x%02x",
+                 apndp ? "AP" : "DP",
+                 request.addr,
+                 value,
+                 esp_err_to_name(err),
+                 response.status,
+                 response.ack);
         return ESP_FAIL;
     }
     return ESP_OK;
@@ -377,10 +396,12 @@ static size_t handle_dap_connect(const uint8_t *request, uint8_t *response)
     const uint8_t port = (request[1] == 0U) ? DAP_PORT_SWD : request[1];
     if (port == DAP_PORT_SWD) {
         s_state.debug_port = DAP_PORT_SWD;
+        s_state.dp_select = 0;
         (void)do_line_reset();
         response[1] = DAP_PORT_SWD;
     } else {
         s_state.debug_port = DAP_PORT_DISABLED;
+        s_state.dp_select = 0;
         response[1] = DAP_PORT_DISABLED;
     }
     return 2;
@@ -389,6 +410,7 @@ static size_t handle_dap_connect(const uint8_t *request, uint8_t *response)
 static size_t handle_dap_disconnect(uint8_t *response)
 {
     s_state.debug_port = DAP_PORT_DISABLED;
+    s_state.dp_select = 0;
     response[1] = DAP_OK;
     return 2;
 }
@@ -665,17 +687,25 @@ static void cmsis_dap_worker_task(void *arg)
         }
 
         const size_t response_len = process_request(&packet, response);
-        const uint16_t send_len = (uint16_t)((response_len < CMSIS_DAP_PACKET_SIZE) ? CMSIS_DAP_PACKET_SIZE : response_len);
+        const uint16_t hid_send_len = (uint16_t)((response_len < CMSIS_DAP_PACKET_SIZE) ? CMSIS_DAP_PACKET_SIZE : response_len);
+        const uint16_t bulk_send_len = (uint16_t)response_len;
 
         if (packet.transport == CMSIS_DAP_TRANSPORT_VENDOR) {
-            while (!tud_mounted() || !tud_vendor_n_mounted(0) || tud_vendor_n_write_available(0) < send_len) {
+            while (!tud_mounted() || !tud_vendor_n_mounted(0) || tud_vendor_n_write_available(0) < bulk_send_len) {
                 vTaskDelay(pdMS_TO_TICKS(1));
             }
-            if (tud_vendor_n_write(0, response, send_len) != send_len) {
+            if (tud_vendor_n_write(0, response, bulk_send_len) != bulk_send_len) {
                 ESP_LOGW(TAG, "failed to queue vendor response cmd=0x%02x", response[0]);
                 continue;
             }
-            if (tud_vendor_n_write_flush(0) == 0U) {
+            uint32_t flushed = 0;
+            for (int retry = 0; retry < 100 && flushed == 0U; ++retry) {
+                flushed = tud_vendor_n_write_flush(0);
+                if (flushed == 0U) {
+                    vTaskDelay(pdMS_TO_TICKS(1));
+                }
+            }
+            if (flushed == 0U) {
                 ESP_LOGW(TAG, "failed to flush vendor response cmd=0x%02x", response[0]);
             }
             continue;
@@ -684,7 +714,7 @@ static void cmsis_dap_worker_task(void *arg)
         while (!tud_mounted() || !tud_hid_ready()) {
             vTaskDelay(pdMS_TO_TICKS(1));
         }
-        if (!tud_hid_report(0, response, send_len)) {
+        if (!tud_hid_report(0, response, hid_send_len)) {
             ESP_LOGW(TAG, "failed to send HID response cmd=0x%02x", response[0]);
         }
     }
@@ -748,6 +778,7 @@ void tud_vendor_rx_cb(uint8_t itf, uint8_t const *buffer, uint16_t bufsize)
     if (s_state.rx_queue == NULL || xQueueSend(s_state.rx_queue, &packet, 0) != pdTRUE) {
         ESP_LOGW(TAG, "drop vendor request because queue is full");
     }
+    tud_vendor_n_read_flush(0);
 }
 #else
 void tud_vendor_rx_cb(uint8_t itf)
