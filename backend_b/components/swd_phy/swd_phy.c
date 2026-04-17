@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "driver/gpio.h"
+#include "esp_cpu.h"
 #include "esp_log.h"
 #include "esp_rom_sys.h"
 #include "sdkconfig.h"
@@ -17,6 +18,7 @@ typedef struct {
     int swdio_gpio;
     uint32_t clock_hz;
     uint32_t half_period_us;
+    uint32_t half_period_cycles;
     bool initialized;
 } swd_phy_state_t;
 
@@ -45,7 +47,7 @@ static const char *ack_to_string(uint8_t ack)
 static void log_request_bits(const char *op, uint8_t request, uint8_t addr)
 {
 #if CONFIG_WDAP_SWD_DIAG_VERBOSE
-    ESP_LOGI(TAG,
+    ESP_LOGD(TAG,
              "%s req=0x%02x start=%u apndp=%u rnw=%u a2=%u a3=%u parity=%u stop=%u park=%u addr=0x%02x hz=%" PRIu32,
              op,
              request,
@@ -93,6 +95,13 @@ static uint8_t parity32(uint32_t value)
 
 static void delay_half_period(void)
 {
+    if (s_state.half_period_cycles > 0U) {
+        const uint32_t start = esp_cpu_get_cycle_count();
+        while ((uint32_t)(esp_cpu_get_cycle_count() - start) < s_state.half_period_cycles) {
+        }
+        return;
+    }
+
     esp_rom_delay_us(s_state.half_period_us);
 }
 
@@ -317,6 +326,10 @@ esp_err_t swd_phy_set_clock(uint32_t hz)
     if (s_state.half_period_us == 0U) {
         s_state.half_period_us = 1U;
     }
+    s_state.half_period_cycles = (uint32_t)(((uint64_t)esp_rom_get_cpu_ticks_per_us() * 500000ULL) / hz);
+    if (s_state.half_period_cycles == 0U) {
+        s_state.half_period_cycles = 1U;
+    }
     return ESP_OK;
 }
 
@@ -328,6 +341,26 @@ esp_err_t swd_phy_write_idle_bits(uint8_t bit, uint32_t count)
 
     set_swdio_output(bit ? 1 : 0);
     for (uint32_t i = 0; i < count; ++i) {
+        clock_cycle();
+    }
+    gpio_set_level((gpio_num_t)s_state.swdio_gpio, 1);
+    return ESP_OK;
+}
+
+esp_err_t swd_phy_swj_sequence(uint32_t count, const uint8_t *data)
+{
+    if (!s_state.initialized) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (data == NULL || count == 0U) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    set_swdio_output(0);
+    for (uint32_t i = 0; i < count; ++i) {
+        const uint8_t byte_val = data[i / 8U];
+        const uint8_t bit_val = (byte_val >> (i % 8U)) & 1U;
+        gpio_set_level((gpio_num_t)s_state.swdio_gpio, bit_val);
         clock_cycle();
     }
     gpio_set_level((gpio_num_t)s_state.swdio_gpio, 1);

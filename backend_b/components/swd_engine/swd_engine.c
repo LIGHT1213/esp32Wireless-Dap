@@ -50,9 +50,87 @@ typedef struct {
     uint32_t dp_select;
     uint32_t default_hz;
     uint32_t current_hz;
+    uint8_t idle_cycles;
+    uint8_t turnaround;
+    uint8_t data_phase;
+    uint32_t memap_csw;
+    uint32_t memap_tar;
+    bool memap_csw_valid;
+    bool memap_tar_valid;
 } swd_engine_state_t;
 
 static swd_engine_state_t s_state;
+
+static esp_err_t swd_memap_write_word(uint32_t addr, uint32_t value);
+static esp_err_t swd_memap_read_word(uint32_t addr, uint32_t *value);
+
+static void memap_trace_reset(void)
+{
+    s_state.memap_csw = 0;
+    s_state.memap_tar = 0;
+    s_state.memap_csw_valid = false;
+    s_state.memap_tar_valid = false;
+}
+
+static bool memap_autoinc_enabled(void)
+{
+    return s_state.memap_csw_valid && ((s_state.memap_csw & CSW_SADDRINC) != 0U);
+}
+
+static bool is_memap_bank_data_reg(uint8_t addr)
+{
+    return ((addr & 0xF0U) == 0x10U) && ((addr & 0x0CU) <= 0x0CU);
+}
+
+static uint32_t memap_bank_data_addr(uint8_t addr)
+{
+    return s_state.memap_tar + (uint32_t)(addr & 0x0CU);
+}
+
+static const char *target_reg_name(uint32_t addr)
+{
+    switch (addr) {
+    case 0xE000EDF0UL:
+        return "DHCSR";
+    case 0xE000EDF4UL:
+        return "DCRSR";
+    case 0xE000EDF8UL:
+        return "DCRDR";
+    case 0xE000EDFCUL:
+        return "DEMCR";
+    case 0xE0002000UL:
+        return "FP_CTRL";
+    default:
+        break;
+    }
+
+    if (addr >= 0x40015800UL && addr <= 0x40015810UL) {
+        return "FLASH_REG";
+    }
+    if (addr >= 0x40022000UL && addr <= 0x40022040UL) {
+        return "RCC_REG";
+    }
+    return NULL;
+}
+
+static void trace_target_reg(const char *op, uint32_t addr, uint32_t value)
+{
+    const char *name = target_reg_name(addr);
+    if (name == NULL) {
+        return;
+    }
+
+    ESP_LOGD(TAG, "%s %s[0x%08" PRIx32 "]=0x%08" PRIx32, op, name, addr, value);
+}
+
+static esp_err_t apply_idle_cycles(void)
+{
+    if (s_state.mock_mode || s_state.idle_cycles == 0U) {
+        return ESP_OK;
+    }
+
+    return swd_phy_write_idle_bits(0, s_state.idle_cycles);
+}
 
 static esp_err_t ack_error_to_esp(uint8_t ack, esp_err_t fallback)
 {
@@ -84,6 +162,7 @@ static esp_err_t swd_transport_resync(void)
         s_state.link_synchronized = true;
         s_state.debug_powered = false;
         s_state.dp_select = UINT32_MAX;
+        memap_trace_reset();
     }
     return err;
 }
@@ -169,7 +248,7 @@ static esp_err_t swd_debug_power_up(void)
                 break;
             }
             if ((ctrl_stat & (CDBGPWRUPACK | CSYSPWRUPACK)) == (CDBGPWRUPACK | CSYSPWRUPACK)) {
-                ESP_LOGI(TAG, "debug power-up ack ctrl_stat=0x%08" PRIx32, ctrl_stat);
+                ESP_LOGD(TAG, "debug power-up ack ctrl_stat=0x%08" PRIx32, ctrl_stat);
                 ESP_RETURN_ON_ERROR(swd_dp_write(DP_CTRL_STAT_ADDR,
                                                  CSYSPWRUPREQ | CDBGPWRUPREQ | TRNNORMAL | MASKLANE,
                                                  NULL),
@@ -177,6 +256,7 @@ static esp_err_t swd_debug_power_up(void)
                                     "configure ctrl/stat failed");
                 ESP_RETURN_ON_ERROR(swd_dp_write(DP_SELECT_ADDR, 0, NULL), TAG, "reselect dp bank 0 failed");
                 s_state.debug_powered = true;
+                memap_trace_reset();
                 return ESP_OK;
             }
             esp_rom_delay_us(1000);
@@ -247,6 +327,10 @@ esp_err_t swd_engine_init(void)
     s_state.link_synchronized = false;
     s_state.debug_powered = false;
     s_state.dp_select = UINT32_MAX;
+    s_state.idle_cycles = 0;
+    s_state.turnaround = 1;
+    s_state.data_phase = 0;
+    memap_trace_reset();
 
     if (s_state.mock_mode) {
         ESP_LOGW(TAG, "mock swd mode is enabled, hardware access is bypassed");
@@ -276,6 +360,19 @@ esp_err_t swd_engine_set_frequency(uint32_t hz)
     return swd_phy_set_clock(hz);
 }
 
+esp_err_t swd_engine_set_transfer_config(uint8_t idle_cycles, uint8_t turnaround, uint8_t data_phase)
+{
+    s_state.idle_cycles = idle_cycles;
+    s_state.turnaround = turnaround;
+    s_state.data_phase = data_phase;
+    ESP_LOGI(TAG,
+             "transfer config idle_cycles=%u turnaround=%u data_phase=%u",
+             s_state.idle_cycles,
+             s_state.turnaround,
+             s_state.data_phase);
+    return ESP_OK;
+}
+
 esp_err_t swd_engine_line_reset(uint8_t *ack)
 {
     if (ack != NULL) {
@@ -300,6 +397,26 @@ esp_err_t swd_engine_line_reset(uint8_t *ack)
     if (err == ESP_OK) {
         s_state.debug_powered = false;
         s_state.dp_select = UINT32_MAX;
+        memap_trace_reset();
+    }
+    return err;
+}
+
+esp_err_t swd_engine_swj_sequence(uint32_t count, const uint8_t *data)
+{
+    if (s_state.mock_mode) {
+        return ESP_OK;
+    }
+
+    const esp_err_t err = swd_phy_swj_sequence(count, data);
+    if (err == ESP_OK) {
+        /* The host is driving the SWJ protocol directly.  Mark the link as
+         * synchronized (the host just completed its init sequence) but
+         * invalidate cached DP state since we don't know what the host did. */
+        s_state.link_synchronized = true;
+        s_state.debug_powered = false;
+        s_state.dp_select = UINT32_MAX;
+        memap_trace_reset();
     }
     return err;
 }
@@ -309,6 +426,7 @@ esp_err_t swd_engine_target_reset(void)
     s_state.link_synchronized = false;
     s_state.debug_powered = false;
     s_state.dp_select = UINT32_MAX;
+    memap_trace_reset();
     return board_support_target_reset_pulse(CONFIG_WDAP_TARGET_RESET_PULSE_MS);
 }
 
@@ -318,6 +436,7 @@ esp_err_t swd_engine_target_reset_drive(bool asserted)
         s_state.link_synchronized = false;
         s_state.debug_powered = false;
         s_state.dp_select = UINT32_MAX;
+        memap_trace_reset();
     }
     return board_support_target_reset_drive(asserted);
 }
@@ -395,6 +514,12 @@ esp_err_t swd_engine_read_dp(uint8_t addr, uint32_t *value, uint8_t *ack)
     if (ack != NULL) {
         *ack = phy_ack;
     }
+    if (err == ESP_OK) {
+        ESP_LOGD(TAG, "dp read addr=0x%02x value=0x%08" PRIx32 " ack=0x%02x", addr, *value, phy_ack);
+    }
+    if (err == ESP_OK) {
+        ESP_RETURN_ON_ERROR(apply_idle_cycles(), TAG, "idle cycles after dp read failed");
+    }
     return ack_error_to_esp(phy_ack, err);
 }
 
@@ -414,6 +539,22 @@ esp_err_t swd_engine_write_dp(uint8_t addr, uint32_t value, uint8_t *ack)
     if (ack != NULL) {
         *ack = phy_ack;
     }
+    if (err == ESP_OK && addr == DP_SELECT_ADDR) {
+        s_state.dp_select = value;
+    }
+    if (err == ESP_OK && addr == DP_CTRL_STAT_ADDR) {
+        if ((value & (CSYSPWRUPREQ | CDBGPWRUPREQ)) == (CSYSPWRUPREQ | CDBGPWRUPREQ)) {
+            s_state.debug_powered = true;
+        } else if ((value & (CSYSPWRUPREQ | CDBGPWRUPREQ)) == 0U) {
+            s_state.debug_powered = false;
+        }
+    }
+    if (err == ESP_OK) {
+        ESP_LOGD(TAG, "dp write addr=0x%02x value=0x%08" PRIx32 " ack=0x%02x", addr, value, phy_ack);
+    }
+    if (err == ESP_OK) {
+        ESP_RETURN_ON_ERROR(apply_idle_cycles(), TAG, "idle cycles after dp write failed");
+    }
     return ack_error_to_esp(phy_ack, err);
 }
 
@@ -432,13 +573,10 @@ esp_err_t swd_engine_read_ap(uint8_t addr, uint32_t *value, uint8_t *ack)
     }
 
     ESP_RETURN_ON_ERROR(ensure_link_ready(), TAG, "swd link not ready");
-    ESP_RETURN_ON_ERROR(swd_debug_power_up(), TAG, "debug power-up failed");
-    ESP_RETURN_ON_ERROR(swd_select_ap_bank(addr), TAG, "select ap bank failed");
 
     uint32_t dummy = 0;
     uint8_t ap_ack = WDAP_ACK_NONE;
     ESP_RETURN_ON_ERROR(swd_ap_read_raw(addr, &dummy, &ap_ack), TAG, "prime ap read failed");
-    ESP_LOGI(TAG, "ap raw read addr=0x%02x prime_ack=0x%02x dummy=0x%08" PRIx32, addr, ap_ack, dummy);
 
     uint32_t result = 0;
     uint8_t dp_ack = WDAP_ACK_NONE;
@@ -451,6 +589,8 @@ esp_err_t swd_engine_read_ap(uint8_t addr, uint32_t *value, uint8_t *ack)
     }
 
     *value = result;
+    ESP_LOGD(TAG, "ap read addr=0x%02x result=0x%08" PRIx32 " dp_ack=0x%02x", addr, result, dp_ack);
+    ESP_RETURN_ON_ERROR(apply_idle_cycles(), TAG, "idle cycles after ap read failed");
     return ESP_OK;
 }
 
@@ -464,18 +604,19 @@ esp_err_t swd_engine_write_ap(uint8_t addr, uint32_t value, uint8_t *ack)
     }
 
     ESP_RETURN_ON_ERROR(ensure_link_ready(), TAG, "swd link not ready");
-    ESP_RETURN_ON_ERROR(swd_debug_power_up(), TAG, "debug power-up failed");
-    ESP_RETURN_ON_ERROR(swd_select_ap_bank(addr), TAG, "select ap bank failed");
 
     uint8_t ap_ack = WDAP_ACK_NONE;
     ESP_RETURN_ON_ERROR(swd_ap_write_raw(addr, value, &ap_ack), TAG, "ap write failed");
-    ESP_LOGI(TAG, "ap raw write addr=0x%02x ack=0x%02x value=0x%08" PRIx32, addr, ap_ack, value);
 
     uint32_t flush = 0;
     uint8_t dp_ack = WDAP_ACK_NONE;
     const esp_err_t err = swd_dp_read(DP_RDBUFF_ADDR, &flush, &dp_ack);
     if (ack != NULL) {
         *ack = dp_ack;
+    }
+    if (err == ESP_OK) {
+        ESP_LOGD(TAG, "ap write addr=0x%02x value=0x%08" PRIx32 " dp_ack=0x%02x", addr, value, dp_ack);
+        ESP_RETURN_ON_ERROR(apply_idle_cycles(), TAG, "idle cycles after ap write failed");
     }
     return err;
 }

@@ -34,6 +34,9 @@ typedef enum {
     WDAP_CMD_SWD_WRITE_BLOCK = 0x19,
     WDAP_CMD_TARGET_HALT = 0x1A,
     WDAP_CMD_TARGET_RESET_DRIVE = 0x1B,
+    WDAP_CMD_SET_TRANSFER_CONFIG = 0x1C,
+    WDAP_CMD_SWD_TRANSFER_SEQUENCE = 0x1D,
+    WDAP_CMD_SWJ_SEQUENCE = 0x1E,
 } wdap_cmd_t;
 
 typedef enum {
@@ -116,6 +119,36 @@ typedef struct {
 typedef struct {
     uint8_t asserted;
 } wdap_target_reset_drive_request_t;
+
+typedef struct {
+    uint8_t idle_cycles;
+    uint8_t turnaround;
+    uint8_t data_phase;
+    uint8_t reserved;
+    uint16_t retry_count;
+    uint16_t match_retry;
+} wdap_transfer_config_request_t;
+
+typedef struct {
+    uint8_t count;
+    uint8_t reserved0;
+    uint16_t retry_count;
+    uint16_t match_retry;
+    uint32_t match_mask;
+    /* followed by count entries:
+     *   uint8_t request_value
+     *   uint8_t resolved_addr
+     *   if read + MATCH_VALUE: uint32_t match_value_le
+     *   if write: uint32_t value_le
+     */
+} wdap_transfer_sequence_request_t;
+
+typedef struct {
+    uint8_t completed;
+    uint8_t result_flags;
+    uint8_t reserved[2];
+    /* followed by read data for successful reads in order */
+} wdap_transfer_sequence_response_t;
 
 typedef struct {
     uint8_t flags;      /* bit 0: APnDP, bits 2-3: A[3:2] */

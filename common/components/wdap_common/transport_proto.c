@@ -175,6 +175,12 @@ const char *wdap_cmd_to_string(uint8_t cmd)
         return "TARGET_HALT";
     case WDAP_CMD_TARGET_RESET_DRIVE:
         return "TARGET_RESET_DRIVE";
+    case WDAP_CMD_SET_TRANSFER_CONFIG:
+        return "SET_TRANSFER_CONFIG";
+    case WDAP_CMD_SWD_TRANSFER_SEQUENCE:
+        return "SWD_TRANSFER_SEQUENCE";
+    case WDAP_CMD_SWJ_SEQUENCE:
+        return "SWJ_SEQUENCE";
     default:
         return "UNKNOWN";
     }
