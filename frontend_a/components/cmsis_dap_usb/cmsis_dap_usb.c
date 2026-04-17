@@ -84,7 +84,6 @@ static const char *TAG = "cmsis_dap_usb";
 #define DAP_TRANSFER_MISMATCH BIT(4)
 
 #define CMSIS_DAP_CAP_SWD BIT(0)
-#define CMSIS_DAP_CAP_ATOMIC BIT(4)
 
 #define TUSB_DESC_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_HID * TUD_HID_INOUT_DESC_LEN + CFG_TUD_VENDOR * TUD_VENDOR_DESC_LEN)
 #define CMSIS_DAP_BOS_TOTAL_LEN (TUD_BOS_DESC_LEN + TUD_BOS_MICROSOFT_OS_DESC_LEN)
@@ -385,7 +384,7 @@ static size_t handle_dap_info(const uint8_t *request, uint8_t *response)
         break;
     case DAP_ID_CAPABILITIES:
         response[1] = 1;
-        response[2] = CMSIS_DAP_CAP_SWD | CMSIS_DAP_CAP_ATOMIC;
+        response[2] = CMSIS_DAP_CAP_SWD;
         return 3;
     case DAP_ID_PACKET_COUNT:
         response[1] = 1;
@@ -620,10 +619,6 @@ static size_t handle_dap_transfer_block(const uint8_t *request, uint8_t *respons
     const bool read = (request_value & DAP_TRANSFER_RNW) != 0U;
     const uint8_t addr = request_value & 0x0CU;
     const uint16_t request_count = (uint16_t)request[2] | ((uint16_t)request[3] << 8);
-    const uint8_t *cursor = &request[5];
-    uint8_t *payload = &response[4];
-    uint16_t completed = 0;
-    uint8_t response_value = 0;
 
     if (s_state.debug_port != DAP_PORT_SWD) {
         response[1] = 0;
@@ -632,32 +627,67 @@ static size_t handle_dap_transfer_block(const uint8_t *request, uint8_t *respons
         return 4;
     }
 
-    for (uint16_t i = 0; i < request_count; ++i) {
-        uint32_t value = 0;
-        esp_err_t err = ESP_OK;
+    if (request_count == 0U) {
+        response[1] = 0;
+        response[2] = 0;
+        response[3] = DAP_TRANSFER_OK;
+        return 4;
+    }
 
-        if (read) {
-            err = do_read_reg(apndp, addr, &value, &response_value);
-            if (err != ESP_OK || response_value != DAP_TRANSFER_OK) {
-                break;
-            }
-            write_u32_le(payload, value);
-            payload += sizeof(uint32_t);
-        } else {
-            value = read_u32_le(cursor);
-            cursor += sizeof(uint32_t);
-            err = do_write_reg(apndp, addr, value, &response_value);
-            if (err != ESP_OK || response_value != DAP_TRANSFER_OK) {
-                break;
+    /* Build WDAP block request */
+    uint8_t wdap_payload[WDAP_MAX_PAYLOAD];
+    wdap_payload[0] = (uint8_t)((apndp ? 0x01U : 0x00U) | (addr & 0x0CU));
+    wdap_payload[1] = (uint8_t)(request_count >> 0);
+    wdap_payload[2] = (uint8_t)(request_count >> 8);
+
+    uint16_t wdap_payload_len = sizeof(wdap_block_request_t);
+
+    if (!read) {
+        const size_t data_len = (size_t)request_count * sizeof(uint32_t);
+        if ((size_t)WDAP_MAX_PAYLOAD - sizeof(wdap_block_request_t) < data_len) {
+            response[1] = 0;
+            response[2] = 0;
+            response[3] = DAP_TRANSFER_ERROR;
+            return 4;
+        }
+        memcpy(&wdap_payload[sizeof(wdap_block_request_t)], &request[5], data_len);
+        wdap_payload_len = (uint16_t)(sizeof(wdap_block_request_t) + data_len);
+    }
+
+    const uint8_t cmd = read ? WDAP_CMD_SWD_READ_BLOCK : WDAP_CMD_SWD_WRITE_BLOCK;
+    wdap_message_t wdap_resp = {0};
+    const esp_err_t err = transact(cmd, wdap_payload, wdap_payload_len, &wdap_resp);
+
+    uint16_t completed = 0;
+    uint8_t response_value = DAP_TRANSFER_ERROR;
+
+    if (err == ESP_OK && wdap_resp.payload_len >= sizeof(wdap_block_response_t)) {
+        const wdap_block_response_t *block_resp = (const wdap_block_response_t *)wdap_resp.payload;
+        completed = (uint16_t)block_resp->completed_lo | ((uint16_t)block_resp->completed_hi << 8);
+        response_value = wdap_ack_to_dap(block_resp->ack, ESP_OK, WDAP_STATUS_OK);
+
+        if (read && completed > 0) {
+            const uint8_t *src = &wdap_resp.payload[sizeof(wdap_block_response_t)];
+            uint8_t *dst = &response[4];
+            const size_t copy_len = (size_t)completed * sizeof(uint32_t);
+            if (wdap_resp.payload_len >= sizeof(wdap_block_response_t) + copy_len) {
+                memcpy(dst, src, copy_len);
             }
         }
-        ++completed;
+
+        /* Update local dp_select if this was a DP SELECT block write */
+        if (!read && !apndp && addr == 0x08U && completed > 0) {
+            const uint16_t last_idx = completed - 1U;
+            s_state.dp_select = read_u32_le(&request[5 + last_idx * sizeof(uint32_t)]);
+        }
+    } else {
+        response_value = wdap_ack_to_dap(wdap_resp.ack, err, wdap_resp.status);
     }
 
     response[1] = (uint8_t)(completed >> 0);
     response[2] = (uint8_t)(completed >> 8);
     response[3] = response_value;
-    return (size_t)(payload - response);
+    return (read && completed > 0) ? (size_t)(4 + (size_t)completed * sizeof(uint32_t)) : 4;
 }
 
 static size_t process_request(const cmsis_dap_packet_t *request, uint8_t *response)

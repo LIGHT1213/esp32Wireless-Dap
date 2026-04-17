@@ -12,6 +12,22 @@
 
 static const char *TAG = "dap_backend";
 
+static uint32_t read_u32_le(const uint8_t *data)
+{
+    return (uint32_t)data[0] |
+           ((uint32_t)data[1] << 8) |
+           ((uint32_t)data[2] << 16) |
+           ((uint32_t)data[3] << 24);
+}
+
+static void write_u32_le(uint8_t *data, uint32_t value)
+{
+    data[0] = (uint8_t)(value >> 0);
+    data[1] = (uint8_t)(value >> 8);
+    data[2] = (uint8_t)(value >> 16);
+    data[3] = (uint8_t)(value >> 24);
+}
+
 static uint8_t status_from_err(esp_err_t err)
 {
     switch (err) {
@@ -188,6 +204,103 @@ static esp_err_t handle_write_ap(const wdap_message_t *request, wdap_message_t *
     return err;
 }
 
+static esp_err_t handle_write_block(const wdap_message_t *request, wdap_message_t *response)
+{
+    if (request->payload_len < sizeof(wdap_block_request_t)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const wdap_block_request_t *hdr = (const wdap_block_request_t *)request->payload;
+    const bool apndp = (hdr->flags & 0x01U) != 0U;
+    const uint8_t addr = hdr->flags & 0x0CU;
+    const uint16_t count = (uint16_t)hdr->count_lo | ((uint16_t)hdr->count_hi << 8);
+
+    if (request->payload_len < sizeof(wdap_block_request_t) + (size_t)count * sizeof(uint32_t)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const uint8_t *values_data = &request->payload[sizeof(wdap_block_request_t)];
+    uint16_t completed = 0;
+    uint8_t ack = WDAP_ACK_OK;
+
+    for (uint16_t i = 0; i < count; ++i) {
+        const uint32_t value = read_u32_le(&values_data[i * sizeof(uint32_t)]);
+        uint8_t transfer_ack = WDAP_ACK_NONE;
+        esp_err_t err;
+        if (apndp) {
+            err = swd_engine_write_ap(addr, value, &transfer_ack);
+        } else {
+            err = swd_engine_write_dp(addr, value, &transfer_ack);
+        }
+        if (transfer_ack == WDAP_ACK_NONE) {
+            ack = WDAP_ACK_FAULT;
+            break;
+        }
+        ack = transfer_ack;
+        if (err != ESP_OK || ack != WDAP_ACK_OK) {
+            break;
+        }
+        ++completed;
+    }
+
+    response->ack = ack;
+    wdap_block_response_t resp = {
+        .ack = ack,
+        .completed_lo = (uint8_t)(completed >> 0),
+        .completed_hi = (uint8_t)(completed >> 8),
+    };
+    return append_payload(response, &resp, sizeof(resp));
+}
+
+static esp_err_t handle_read_block(const wdap_message_t *request, wdap_message_t *response)
+{
+    if (request->payload_len < sizeof(wdap_block_request_t)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const wdap_block_request_t *hdr = (const wdap_block_request_t *)request->payload;
+    const bool apndp = (hdr->flags & 0x01U) != 0U;
+    const uint8_t addr = hdr->flags & 0x0CU;
+    const uint16_t count = (uint16_t)hdr->count_lo | ((uint16_t)hdr->count_hi << 8);
+
+    const size_t max_count = (WDAP_MAX_PAYLOAD - sizeof(wdap_block_response_t)) / sizeof(uint32_t);
+    const uint16_t limited_count = (count > max_count) ? (uint16_t)max_count : count;
+
+    uint8_t resp_payload[WDAP_MAX_PAYLOAD];
+    uint16_t completed = 0;
+    uint8_t ack = WDAP_ACK_OK;
+
+    for (uint16_t i = 0; i < limited_count; ++i) {
+        uint32_t value = 0;
+        uint8_t transfer_ack = WDAP_ACK_NONE;
+        esp_err_t err;
+        if (apndp) {
+            err = swd_engine_read_ap(addr, &value, &transfer_ack);
+        } else {
+            err = swd_engine_read_dp(addr, &value, &transfer_ack);
+        }
+        if (transfer_ack == WDAP_ACK_NONE) {
+            ack = WDAP_ACK_FAULT;
+            break;
+        }
+        ack = transfer_ack;
+        if (err != ESP_OK || ack != WDAP_ACK_OK) {
+            break;
+        }
+        write_u32_le(&resp_payload[sizeof(wdap_block_response_t) + i * sizeof(uint32_t)], value);
+        ++completed;
+    }
+
+    response->ack = ack;
+    wdap_block_response_t *resp_hdr = (wdap_block_response_t *)resp_payload;
+    resp_hdr->ack = ack;
+    resp_hdr->completed_lo = (uint8_t)(completed >> 0);
+    resp_hdr->completed_hi = (uint8_t)(completed >> 8);
+
+    return append_payload(response, resp_payload,
+                          sizeof(wdap_block_response_t) + (size_t)completed * sizeof(uint32_t));
+}
+
 static esp_err_t handle_request(const wdap_message_t *request, wdap_message_t *response)
 {
     switch (request->cmd) {
@@ -224,8 +337,9 @@ static esp_err_t handle_request(const wdap_message_t *request, wdap_message_t *r
     case WDAP_CMD_SWD_WRITE_AP:
         return handle_write_ap(request, response);
     case WDAP_CMD_SWD_READ_BLOCK:
+        return handle_read_block(request, response);
     case WDAP_CMD_SWD_WRITE_BLOCK:
-        return ESP_ERR_NOT_SUPPORTED;
+        return handle_write_block(request, response);
     default:
         return ESP_ERR_NOT_SUPPORTED;
     }

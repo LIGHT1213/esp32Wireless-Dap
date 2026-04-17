@@ -117,5 +117,19 @@ typedef struct {
     uint8_t asserted;
 } wdap_target_reset_drive_request_t;
 
+typedef struct {
+    uint8_t flags;      /* bit 0: APnDP, bits 2-3: A[3:2] */
+    uint8_t count_lo;   /* transfer count low byte */
+    uint8_t count_hi;   /* transfer count high byte */
+    /* For writes: followed by count * uint32_t values (little-endian) */
+} wdap_block_request_t;
+
+typedef struct {
+    uint8_t ack;            /* SWD ack from last transfer */
+    uint8_t completed_lo;   /* completed count low byte */
+    uint8_t completed_hi;   /* completed count high byte */
+    /* For reads: followed by completed * uint32_t values (little-endian) */
+} wdap_block_response_t;
+
 const char *wdap_cmd_to_string(uint8_t cmd);
 const char *wdap_status_to_string(uint8_t status);
