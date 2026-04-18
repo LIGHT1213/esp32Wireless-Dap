@@ -16,6 +16,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 
 static const char *TAG = "wifi_link_a";
@@ -24,6 +25,7 @@ static int s_socket = -1;
 static TaskHandle_t s_rx_task_handle;
 static wifi_link_rx_cb_t s_callback;
 static void *s_callback_ctx;
+static SemaphoreHandle_t s_socket_lock;
 
 static const int WIFI_CONNECTED_BIT = BIT0;
 static const int WDAP_SOCKET_BUFFER_BYTES = (int)(WDAP_MAX_FRAME_SIZE * 8U);
@@ -31,22 +33,40 @@ static const BaseType_t WDAP_NET_CORE_ID = 0;
 
 static void close_socket(void)
 {
+    if (s_socket_lock != NULL && xSemaphoreTake(s_socket_lock, portMAX_DELAY) != pdTRUE) {
+        return;
+    }
+
     if (s_socket >= 0) {
         shutdown(s_socket, 0);
         close(s_socket);
         s_socket = -1;
     }
+
+    if (s_socket_lock != NULL) {
+        xSemaphoreGive(s_socket_lock);
+    }
 }
 
 static esp_err_t ensure_socket(void)
 {
+    if (s_socket_lock == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    if (xSemaphoreTake(s_socket_lock, portMAX_DELAY) != pdTRUE) {
+        return ESP_ERR_TIMEOUT;
+    }
+
     if (s_socket >= 0) {
+        xSemaphoreGive(s_socket_lock);
         return ESP_OK;
     }
 
     const int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
     if (sock < 0) {
         ESP_LOGE(TAG, "socket create failed: errno=%d", errno);
+        xSemaphoreGive(s_socket_lock);
         return ESP_FAIL;
     }
 
@@ -66,16 +86,19 @@ static esp_err_t ensure_socket(void)
     if (inet_pton(AF_INET, CONFIG_WDAP_BACKEND_IP, &peer_addr.sin_addr) != 1) {
         ESP_LOGE(TAG, "invalid backend ip: %s", CONFIG_WDAP_BACKEND_IP);
         close(sock);
+        xSemaphoreGive(s_socket_lock);
         return ESP_ERR_INVALID_ARG;
     }
 
     if (connect(sock, (struct sockaddr *)&peer_addr, sizeof(peer_addr)) != 0) {
         ESP_LOGE(TAG, "socket connect failed: errno=%d", errno);
         close(sock);
+        xSemaphoreGive(s_socket_lock);
         return ESP_FAIL;
     }
 
     s_socket = sock;
+    xSemaphoreGive(s_socket_lock);
     ESP_LOGI(TAG, "udp peer ready: %s:%d", CONFIG_WDAP_BACKEND_IP, CONFIG_WDAP_UDP_PORT);
     return ESP_OK;
 }
@@ -91,7 +114,17 @@ static void rx_task(void *arg)
             continue;
         }
 
-        const ssize_t received = recv(s_socket, buffer, sizeof(buffer), 0);
+        int sock = -1;
+        if (xSemaphoreTake(s_socket_lock, portMAX_DELAY) == pdTRUE) {
+            sock = s_socket;
+            xSemaphoreGive(s_socket_lock);
+        }
+        if (sock < 0) {
+            vTaskDelay(pdMS_TO_TICKS(50));
+            continue;
+        }
+
+        const ssize_t received = recv(sock, buffer, sizeof(buffer), 0);
         if (received > 0) {
             if (s_callback != NULL) {
                 s_callback(buffer, (size_t)received, s_callback_ctx);
@@ -139,7 +172,8 @@ static void wifi_event_handler(void *arg,
 esp_err_t wifi_link_init(wifi_link_rx_cb_t callback, void *ctx)
 {
     s_event_group = xEventGroupCreate();
-    if (s_event_group == NULL) {
+    s_socket_lock = xSemaphoreCreateMutex();
+    if (s_event_group == NULL || s_socket_lock == NULL) {
         return ESP_ERR_NO_MEM;
     }
 
@@ -206,7 +240,12 @@ esp_err_t wifi_link_send_packet(const uint8_t *data, size_t len)
         return ESP_FAIL;
     }
 
+    if (xSemaphoreTake(s_socket_lock, portMAX_DELAY) != pdTRUE) {
+        return ESP_ERR_TIMEOUT;
+    }
+
     const ssize_t sent = send(s_socket, data, len, 0);
+    xSemaphoreGive(s_socket_lock);
     if (sent != (ssize_t)len) {
         ESP_LOGW(TAG, "send failed: expected=%u actual=%d errno=%d", (unsigned)len, (int)sent, errno);
         close_socket();

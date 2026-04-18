@@ -28,9 +28,14 @@ static const char *TAG = "cmsis_dap_usb";
 #define CMSIS_DAP_HID_EP_IN 0x81
 #define CMSIS_DAP_VENDOR_EP_OUT 0x02
 #define CMSIS_DAP_VENDOR_EP_IN 0x82
+#define CMSIS_DAP_CDC_EP_NOTIF 0x83
+#define CMSIS_DAP_CDC_EP_OUT 0x04
+#define CMSIS_DAP_CDC_EP_IN 0x84
 #define CMSIS_DAP_USB_QUEUE_LEN 64U
 #define CMSIS_DAP_VENDOR_REQUEST_MICROSOFT 0x20U
 #define CMSIS_DAP_USB_EP_SIZE 64U
+#define CMSIS_DAP_CDC_NOTIF_EP_SIZE 8U
+#define CMSIS_DAP_CDC_DATA_EP_SIZE 64U
 #define CMSIS_DAP_MAX_SWJ_CLOCK_HZ 10000000U
 #define CMSIS_DAP_WORKER_STACK_SIZE 8192U
 #define CMSIS_DAP_STACK_WARN_HWM_WORDS 256U
@@ -96,11 +101,13 @@ static const char *TAG = "cmsis_dap_usb";
 #define CMSIS_DAP_CAP_SWD BIT(0)
 #define CMSIS_DAP_CAP_ATOMIC BIT(4)
 
-#define TUSB_DESC_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_VENDOR_DESC_LEN)
+#define TUSB_DESC_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_VENDOR_DESC_LEN + TUD_CDC_DESC_LEN)
 #define CMSIS_DAP_BOS_TOTAL_LEN (TUD_BOS_DESC_LEN + TUD_BOS_MICROSOFT_OS_DESC_LEN)
-#define CMSIS_DAP_MS_OS_20_DESC_LEN 0x00AAU
+#define CMSIS_DAP_MS_OS_20_DESC_LEN 0x00BAU
 #define CMSIS_DAP_V2_INTERFACE_NUMBER 0U
 #define CMSIS_DAP_V2_INTERFACE_STRING_INDEX 4U
+#define CMSIS_DAP_CDC_INTERFACE_NUMBER 1U
+#define CMSIS_DAP_CDC_INTERFACE_STRING_INDEX 5U
 
 typedef enum {
     CMSIS_DAP_TRANSPORT_HID = 0,
@@ -162,9 +169,10 @@ static const uint8_t s_hid_report_descriptor[] = {
 static const char *s_string_descriptor[] = {
     (char[]){0x09, 0x04},
     "wireless-dap",
-    "CMSIS-DAP v2",
+    "Wireless DAP",
     s_state.serial,
     "CMSIS-DAP v2",
+    "UART Bridge",
 };
 
 static const tusb_desc_device_t s_device_descriptor = {
@@ -185,12 +193,19 @@ static const tusb_desc_device_t s_device_descriptor = {
 };
 
 static const uint8_t s_configuration_descriptor[] = {
-    TUD_CONFIG_DESCRIPTOR(1, 1, 0, TUSB_DESC_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
+    TUD_CONFIG_DESCRIPTOR(1, 3, 0, TUSB_DESC_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
     TUD_VENDOR_DESCRIPTOR(CMSIS_DAP_V2_INTERFACE_NUMBER,
                           CMSIS_DAP_V2_INTERFACE_STRING_INDEX,
                           CMSIS_DAP_VENDOR_EP_OUT,
                           CMSIS_DAP_VENDOR_EP_IN,
                           CMSIS_DAP_USB_EP_SIZE),
+    TUD_CDC_DESCRIPTOR(CMSIS_DAP_CDC_INTERFACE_NUMBER,
+                       CMSIS_DAP_CDC_INTERFACE_STRING_INDEX,
+                       CMSIS_DAP_CDC_EP_NOTIF,
+                       CMSIS_DAP_CDC_NOTIF_EP_SIZE,
+                       CMSIS_DAP_CDC_EP_OUT,
+                       CMSIS_DAP_CDC_EP_IN,
+                       CMSIS_DAP_CDC_DATA_EP_SIZE),
 };
 
 static const uint8_t s_bos_descriptor[] = {
@@ -200,10 +215,14 @@ static const uint8_t s_bos_descriptor[] = {
 
 static uint8_t s_ms_os_20_descriptor[] = {
     U16_TO_U8S_LE(0x000A), U16_TO_U8S_LE(MS_OS_20_SET_HEADER_DESCRIPTOR), U32_TO_U8S_LE(0x06030000), U16_TO_U8S_LE(CMSIS_DAP_MS_OS_20_DESC_LEN),
+    U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_CONFIGURATION), 0x00, 0x00,
+    U16_TO_U8S_LE(CMSIS_DAP_MS_OS_20_DESC_LEN - 0x000A),
+    U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_FUNCTION), CMSIS_DAP_V2_INTERFACE_NUMBER, 0x00,
+    U16_TO_U8S_LE(CMSIS_DAP_MS_OS_20_DESC_LEN - 0x000A - 0x0008),
     U16_TO_U8S_LE(0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_COMPATBLE_ID),
     'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    U16_TO_U8S_LE(CMSIS_DAP_MS_OS_20_DESC_LEN - 0x000A - 0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
+    U16_TO_U8S_LE(0x008CU), U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
     U16_TO_U8S_LE(0x0007), U16_TO_U8S_LE(0x002A),
     'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 'I', 0x00, 'n', 0x00, 't', 0x00, 'e', 0x00,
     'r', 0x00, 'f', 0x00, 'a', 0x00, 'c', 0x00, 'e', 0x00, 'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00, 's', 0x00, 0x00, 0x00,

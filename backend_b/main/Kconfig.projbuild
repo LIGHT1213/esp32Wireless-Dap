@@ -46,6 +46,26 @@ config WDAP_TARGET_NRST_GPIO
     range 0 48
     default 6
 
+config WDAP_UART_BRIDGE_PORT_NUM
+    int "UART bridge port number"
+    range 1 2
+    default 1
+
+config WDAP_UART_BRIDGE_TX_GPIO
+    int "UART bridge TX GPIO"
+    range 0 48
+    default 17
+
+config WDAP_UART_BRIDGE_RX_GPIO
+    int "UART bridge RX GPIO"
+    range 0 48
+    default 18
+
+config WDAP_UART_BRIDGE_BAUDRATE
+    int "UART bridge default baud rate"
+    range 1200 5000000
+    default 115200
+
 config WDAP_TARGET_RESET_PULSE_MS
     int "Target reset pulse in milliseconds"
     range 1 1000

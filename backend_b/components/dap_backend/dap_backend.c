@@ -178,7 +178,7 @@ static esp_err_t handle_get_version(wdap_message_t *response)
 static esp_err_t handle_get_caps(wdap_message_t *response)
 {
     const wdap_caps_response_t payload = {
-        .feature_flags = swd_engine_get_capabilities(),
+        .feature_flags = swd_engine_get_capabilities() | WDAP_CAP_UART_BRIDGE,
         .max_payload = WDAP_MAX_PAYLOAD,
         .default_swd_hz = swd_engine_get_default_frequency(),
         .current_swd_hz = swd_engine_get_current_frequency(),

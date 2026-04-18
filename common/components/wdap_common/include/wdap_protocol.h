@@ -16,6 +16,7 @@ typedef enum {
     WDAP_MSG_REQUEST = 0x01,
     WDAP_MSG_RESPONSE = 0x02,
     WDAP_MSG_HEARTBEAT = 0x03,
+    WDAP_MSG_STREAM = 0x04,
 } wdap_msg_type_t;
 
 typedef enum {
@@ -39,6 +40,8 @@ typedef enum {
     WDAP_CMD_SWJ_SEQUENCE = 0x1E,
     WDAP_CMD_SWJ_PINS = 0x1F,
     WDAP_CMD_SWD_SEQUENCE = 0x20,
+    WDAP_CMD_UART_DATA = 0x30,
+    WDAP_CMD_UART_CONFIG = 0x31,
 } wdap_cmd_t;
 
 typedef enum {
@@ -73,6 +76,7 @@ typedef enum {
     WDAP_CAP_MOCK_SWD = 1UL << 6,
     WDAP_CAP_AP_ACCESS = 1UL << 7,
     WDAP_CAP_TARGET_HALT = 1UL << 8,
+    WDAP_CAP_UART_BRIDGE = 1UL << 9,
 } wdap_cap_flags_t;
 
 #define WDAP_SWJ_PIN_SWCLK_TCK 0x01U
@@ -180,6 +184,16 @@ typedef struct {
     uint8_t completed_hi;   /* completed count high byte */
     /* For reads: followed by completed * uint32_t values (little-endian) */
 } wdap_block_response_t;
+
+typedef struct {
+    uint32_t bit_rate;
+    uint8_t stop_bits;
+    uint8_t parity;
+    uint8_t data_bits;
+    uint8_t dtr;
+    uint8_t rts;
+    uint8_t reserved[2];
+} wdap_uart_config_t;
 
 const char *wdap_cmd_to_string(uint8_t cmd);
 const char *wdap_status_to_string(uint8_t status);

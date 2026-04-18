@@ -6,19 +6,58 @@
 #include <unistd.h>
 
 #include "dap_backend.h"
+#include "esp_check.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "lwip/inet.h"
 #include "sdkconfig.h"
+#include "transport_proto.h"
+#include "uart_bridge.h"
 #include "wdap_protocol.h"
 
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 
 static const char *TAG = "wifi_link_b";
 static const int WDAP_SOCKET_BUFFER_BYTES = (int)(WDAP_MAX_FRAME_SIZE * 8U);
 static const BaseType_t WDAP_SWD_CORE_ID = 1;
+
+static int s_socket = -1;
+static SemaphoreHandle_t s_socket_lock;
+static struct sockaddr_storage s_peer_addr;
+static socklen_t s_peer_addr_len;
+static bool s_peer_valid;
+
+static void close_socket_locked(void)
+{
+    if (s_socket >= 0) {
+        shutdown(s_socket, 0);
+        close(s_socket);
+        s_socket = -1;
+    }
+    s_peer_valid = false;
+    s_peer_addr_len = 0;
+    memset(&s_peer_addr, 0, sizeof(s_peer_addr));
+}
+
+static esp_err_t process_incoming_frame(const uint8_t *rx_data,
+                                        size_t rx_len,
+                                        uint8_t *tx_data,
+                                        size_t tx_capacity,
+                                        size_t *tx_len)
+{
+    wdap_message_t message = {0};
+    ESP_RETURN_ON_ERROR(transport_proto_decode(rx_data, rx_len, &message), TAG, "decode request failed");
+
+    if (message.msg_type == WDAP_MSG_STREAM) {
+        *tx_len = 0U;
+        return uart_bridge_handle_message(&message);
+    }
+
+    return dap_backend_process_frame(rx_data, rx_len, tx_data, tx_capacity, tx_len);
+}
 
 static void wifi_event_handler(void *arg,
                                esp_event_base_t event_base,
@@ -86,6 +125,14 @@ static void udp_server_task(void *arg)
             continue;
         }
 
+        if (xSemaphoreTake(s_socket_lock, portMAX_DELAY) == pdTRUE) {
+            s_socket = sock;
+            s_peer_valid = false;
+            s_peer_addr_len = 0;
+            memset(&s_peer_addr, 0, sizeof(s_peer_addr));
+            xSemaphoreGive(s_socket_lock);
+        }
+
         while (true) {
             struct sockaddr_storage peer_addr = {0};
             socklen_t peer_len = sizeof(peer_addr);
@@ -100,14 +147,25 @@ static void udp_server_task(void *arg)
                 break;
             }
 
+            if (xSemaphoreTake(s_socket_lock, portMAX_DELAY) == pdTRUE) {
+                s_peer_addr = peer_addr;
+                s_peer_addr_len = peer_len;
+                s_peer_valid = true;
+                xSemaphoreGive(s_socket_lock);
+            }
+
             size_t tx_len = 0;
-            const esp_err_t err = dap_backend_process_frame(rx_buffer,
-                                                            (size_t)rx_len,
-                                                            tx_buffer,
-                                                            sizeof(tx_buffer),
-                                                            &tx_len);
+            const esp_err_t err = process_incoming_frame(rx_buffer,
+                                                         (size_t)rx_len,
+                                                         tx_buffer,
+                                                         sizeof(tx_buffer),
+                                                         &tx_len);
             if (err != ESP_OK) {
                 ESP_LOGW(TAG, "request dropped: %s", esp_err_to_name(err));
+                continue;
+            }
+
+            if (tx_len == 0U) {
                 continue;
             }
 
@@ -122,14 +180,24 @@ static void udp_server_task(void *arg)
             }
         }
 
-        shutdown(sock, 0);
-        close(sock);
+        if (xSemaphoreTake(s_socket_lock, portMAX_DELAY) == pdTRUE) {
+            close_socket_locked();
+            xSemaphoreGive(s_socket_lock);
+        } else {
+            shutdown(sock, 0);
+            close(sock);
+        }
         vTaskDelay(pdMS_TO_TICKS(250));
     }
 }
 
 esp_err_t wifi_link_init(void)
 {
+    s_socket_lock = xSemaphoreCreateMutex();
+    if (s_socket_lock == NULL) {
+        return ESP_ERR_NO_MEM;
+    }
+
     esp_netif_create_default_wifi_ap();
 
     const wifi_init_config_t init_cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -161,4 +229,35 @@ esp_err_t wifi_link_init(void)
                                                   NULL,
                                                   WDAP_SWD_CORE_ID);
     return ok == pdPASS ? ESP_OK : ESP_FAIL;
+}
+
+esp_err_t wifi_link_send_packet(const uint8_t *data, size_t len)
+{
+    if (data == NULL || len == 0U) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (s_socket_lock == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (xSemaphoreTake(s_socket_lock, portMAX_DELAY) != pdTRUE) {
+        return ESP_ERR_TIMEOUT;
+    }
+    if (s_socket < 0 || !s_peer_valid) {
+        xSemaphoreGive(s_socket_lock);
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    const ssize_t sent = sendto(s_socket,
+                                data,
+                                len,
+                                0,
+                                (const struct sockaddr *)&s_peer_addr,
+                                s_peer_addr_len);
+    xSemaphoreGive(s_socket_lock);
+
+    if (sent != (ssize_t)len) {
+        ESP_LOGW(TAG, "async sendto failed: errno=%d", errno);
+        return ESP_FAIL;
+    }
+    return ESP_OK;
 }

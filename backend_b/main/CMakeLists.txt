@@ -8,4 +8,5 @@ idf_component_register(
         dap_backend
         swd_engine
         board_support
+        uart_bridge
 )

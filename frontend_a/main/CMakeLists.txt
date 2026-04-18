@@ -9,4 +9,6 @@ idf_component_register(
         session_mgr
         dap_frontend
         cmsis_dap_usb
+        usb_uart_bridge
+        wdap_common
 )

@@ -1,5 +1,6 @@
 #include "board_support.h"
 #include "swd_engine.h"
+#include "uart_bridge.h"
 #include "wifi_link.h"
 
 #include "esp_event.h"
@@ -34,7 +35,8 @@ void app_main(void)
 
     ESP_ERROR_CHECK(board_support_init());
     ESP_ERROR_CHECK(swd_engine_init());
+    ESP_ERROR_CHECK(uart_bridge_init());
     ESP_ERROR_CHECK(wifi_link_init());
 
-    ESP_LOGI(TAG, "backend B ready, waiting for frontend requests");
+    ESP_LOGI(TAG, "backend B ready, waiting for frontend requests and UART bridge traffic");
 }

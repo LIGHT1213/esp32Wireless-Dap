@@ -2,6 +2,8 @@
 #include "cmsis_dap_usb.h"
 #include "host_link.h"
 #include "session_mgr.h"
+#include "transport_proto.h"
+#include "usb_uart_bridge.h"
 #include "wifi_link.h"
 
 #include "esp_event.h"
@@ -21,6 +23,31 @@ static esp_err_t init_nvs(void)
     return err;
 }
 
+static void frontend_wifi_rx_router(const uint8_t *data, size_t len, void *ctx)
+{
+    (void)ctx;
+
+    wdap_message_t message = {0};
+    if (transport_proto_decode(data, len, &message) != ESP_OK) {
+        ESP_LOGW(TAG, "drop undecodable frame from backend");
+        return;
+    }
+
+    switch (message.msg_type) {
+    case WDAP_MSG_RESPONSE:
+        session_mgr_handle_incoming(data, len, NULL);
+        return;
+    case WDAP_MSG_STREAM:
+        if (usb_uart_bridge_handle_message(&message) != ESP_OK) {
+            ESP_LOGW(TAG, "drop stream cmd=%s", wdap_cmd_to_string(message.cmd));
+        }
+        return;
+    default:
+        ESP_LOGW(TAG, "ignore unexpected msg_type=0x%02x cmd=%s", message.msg_type, wdap_cmd_to_string(message.cmd));
+        return;
+    }
+}
+
 void app_main(void)
 {
     ESP_ERROR_CHECK(init_nvs());
@@ -34,11 +61,12 @@ void app_main(void)
 #endif
 
     ESP_ERROR_CHECK(session_mgr_init());
-    ESP_ERROR_CHECK(wifi_link_init(session_mgr_handle_incoming, NULL));
+    ESP_ERROR_CHECK(wifi_link_init(frontend_wifi_rx_router, NULL));
     ESP_ERROR_CHECK(session_mgr_start());
     ESP_ERROR_CHECK(dap_frontend_init());
     ESP_ERROR_CHECK(cmsis_dap_usb_init());
+    ESP_ERROR_CHECK(usb_uart_bridge_init());
     ESP_ERROR_CHECK(host_link_start(dap_frontend_handle_host_line, NULL));
 
-    ESP_LOGI(TAG, "frontend A ready, commands are accepted via console and native USB CMSIS-DAP");
+    ESP_LOGI(TAG, "frontend A ready, commands are accepted via console, native USB CMSIS-DAP, and USB CDC bridge");
 }
