@@ -27,6 +27,11 @@ jobs:
       release_tag: ${{ steps.vars.outputs.release_tag }}
       should_release: ${{ steps.vars.outputs.should_release }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - id: vars
         shell: bash
         run: |
@@ -44,6 +49,11 @@ jobs:
           elif [[ "${event_name}" == "workflow_dispatch" && -n "${{ inputs.release_tag }}" ]]; then
             release_tag="${{ inputs.release_tag }}"
             should_release="true"
+          else
+            release_tag="$(git tag --points-at "${GITHUB_SHA}" | grep -E '^[vV].+' | head -n 1 || true)"
+            if [[ -n "${release_tag}" ]]; then
+              should_release="true"
+            fi
           fi
 
           if [[ -n "${release_tag}" ]]; then
