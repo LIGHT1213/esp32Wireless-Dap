@@ -35,15 +35,15 @@
 
 ## 工程结构
 
-- [`frontend_a`](C:/Users/pan39/Desktop/workSpace/esp32Wireless-Dap/frontend_a)
+- [`frontend_a`](./frontend_a)
   - PC 侧 USB CMSIS-DAP 前端
-- [`backend_b`](C:/Users/pan39/Desktop/workSpace/esp32Wireless-Dap/backend_b)
+- [`backend_b`](./backend_b)
   - 目标侧 SWD 执行后端
-- [`common`](C:/Users/pan39/Desktop/workSpace/esp32Wireless-Dap/common)
+- [`common`](./common)
   - 前后端共用协议和工具代码
-- [`tools`](C:/Users/pan39/Desktop/workSpace/esp32Wireless-Dap/tools)
+- [`tools`](./tools)
   - Windows 下的辅助脚本
-- [`USAGE.md`](C:/Users/pan39/Desktop/workSpace/esp32Wireless-Dap/USAGE.md)
+- [`USAGE.md`](./USAGE.md)
   - 详细使用文档
 
 ## 默认网络配置
@@ -72,7 +72,7 @@
 
 ## 构建与烧写
 
-详细命令请看 [`USAGE.md`](C:/Users/pan39/Desktop/workSpace/esp32Wireless-Dap/USAGE.md)。
+详细命令请看 [`USAGE.md`](./USAGE.md)。
 
 Windows 下典型流程：
 
@@ -81,6 +81,55 @@ Windows 下典型流程：
 3. 烧写 `backend_b` 到 `COM5`
 4. 烧写 `frontend_a` 到 `COM3`
 5. 用 `Keil CLI` 或 `OpenOCD` 验证
+
+## GitHub Actions 与 Release
+
+仓库现在包含自动构建与发布 workflow：
+
+- Push 到 `main` 时，GitHub Actions 会编译 `frontend_a` 和 `backend_b`，并上传 workflow artifact
+- 提交 Pull Request 时，会执行同样的编译检查
+- Push `v*` 或 `V*` 标签时，例如 `v1.0.0` 或 `V0.1.0`，会自动创建或更新 GitHub Release，并上传 A/B 两端固件包
+- 手动触发 workflow 时，如果填写 `release_tag`，也会创建或更新对应 Release
+
+相关页面：
+
+- [Actions](https://github.com/LIGHT1213/esp32Wireless-Dap/actions)
+- [Releases](https://github.com/LIGHT1213/esp32Wireless-Dap/releases)
+- [Latest Release](https://github.com/LIGHT1213/esp32Wireless-Dap/releases/latest)
+
+## 如何下载 BIN
+
+如果你不想本地编译，可以直接从 GitHub Release 下载现成固件：
+
+1. 打开 [Latest Release](https://github.com/LIGHT1213/esp32Wireless-Dap/releases/latest)
+2. 下载 `esp32-wireless-dap-frontend_a-<版本>.zip`
+3. 下载 `esp32-wireless-dap-backend_b-<版本>.zip`
+4. 解压后使用压缩包内的 `FLASH_COMMAND.txt` 或 `flash_args.txt` 烧写
+
+每个压缩包都包含：
+
+- `bootloader.bin`
+- `partition-table.bin`
+- `wdap_frontend_a.bin` 或 `wdap_backend_b.bin`
+- `flash_args.txt`
+- `FLASH_COMMAND.txt`
+- `manifest.json`
+- `SHA256SUMS.txt`
+
+示例烧写命令：
+
+```powershell
+python -m esptool --chip esp32s3 --port COM3 --baud 460800 --before default_reset --after hard_reset write_flash @flash_args.txt
+```
+
+```powershell
+python -m esptool --chip esp32s3 --port COM5 --baud 460800 --before default_reset --after hard_reset write_flash @flash_args.txt
+```
+
+当前测试环境中：
+
+- A 端通常是 `COM3`
+- B 端通常是 `COM5`
 
 ## 性能相关
 
@@ -103,5 +152,5 @@ Windows 下典型流程：
 
 ## 文档
 
-- 使用文档：[`USAGE.md`](C:/Users/pan39/Desktop/workSpace/esp32Wireless-Dap/USAGE.md)
-- 原始原理图：[`ESP32-S3-SCH-V1.4.pdf`](C:/Users/pan39/Desktop/workSpace/esp32Wireless-Dap/ESP32-S3-SCH-V1.4.pdf)
+- 使用文档：[`USAGE.md`](./USAGE.md)
+- 原始原理图：[`ESP32-S3-SCH-V1.4.pdf`](./ESP32-S3-SCH-V1.4.pdf)

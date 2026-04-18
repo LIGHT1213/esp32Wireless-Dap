@@ -1,0 +1,145 @@
+name: firmware-release
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+      - "V*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Optional release tag. Example: v1.0.0"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact_version: ${{ steps.vars.outputs.artifact_version }}
+      artifact_version_slug: ${{ steps.vars.outputs.artifact_version_slug }}
+      release_tag: ${{ steps.vars.outputs.release_tag }}
+      should_release: ${{ steps.vars.outputs.should_release }}
+    steps:
+      - id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          event_name="${{ github.event_name }}"
+          ref_name="${GITHUB_REF_NAME}"
+          short_sha="${GITHUB_SHA::7}"
+          release_tag=""
+          should_release="false"
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            release_tag="${ref_name}"
+            should_release="true"
+          elif [[ "${event_name}" == "workflow_dispatch" && -n "${{ inputs.release_tag }}" ]]; then
+            release_tag="${{ inputs.release_tag }}"
+            should_release="true"
+          fi
+
+          if [[ -n "${release_tag}" ]]; then
+            artifact_version="${release_tag}"
+          elif [[ "${event_name}" == "pull_request" ]]; then
+            artifact_version="pr-${{ github.event.pull_request.number }}-${short_sha}"
+          else
+            safe_ref="${ref_name//\//-}"
+            artifact_version="${safe_ref}-${short_sha}"
+          fi
+
+          artifact_version_slug="$(printf '%s' "${artifact_version}" | sed -E 's/[^0-9A-Za-z._-]+/-/g; s/^-+//; s/-+$//')"
+          if [[ -z "${artifact_version_slug}" ]]; then
+            artifact_version_slug="unknown"
+          fi
+
+          echo "artifact_version=${artifact_version}" >> "${GITHUB_OUTPUT}"
+          echo "artifact_version_slug=${artifact_version_slug}" >> "${GITHUB_OUTPUT}"
+          echo "release_tag=${release_tag}" >> "${GITHUB_OUTPUT}"
+          echo "should_release=${should_release}" >> "${GITHUB_OUTPUT}"
+
+  build:
+    name: Build ${{ matrix.variant }}
+    runs-on: ubuntu-latest
+    needs: meta
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: frontend_a
+            project_dir: frontend_a
+            project_name: wdap_frontend_a
+          - variant: backend_b
+            project_dir: backend_b
+            project_name: wdap_backend_b
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build ${{ matrix.variant }}
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.4.1
+          target: esp32s3
+          path: ${{ matrix.project_dir }}
+          command: idf.py build
+
+      - name: Package ${{ matrix.variant }}
+        run: |
+          python tools/package_firmware.py \
+            --project-dir "${{ matrix.project_dir }}" \
+            --project-name "${{ matrix.project_name }}" \
+            --variant "${{ matrix.variant }}" \
+            --output-dir dist \
+            --version "${{ needs.meta.outputs.artifact_version_slug }}" \
+            --commit "${{ github.sha }}"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.variant }}
+          path: |
+            dist/esp32-wireless-dap-${{ matrix.variant }}-${{ needs.meta.outputs.artifact_version_slug }}.zip
+            dist/esp32-wireless-dap-${{ matrix.variant }}-${{ needs.meta.outputs.artifact_version_slug }}.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs:
+      - meta
+      - build
+    if: needs.meta.outputs.should_release == 'true'
+    steps:
+      - name: Download packaged firmware
+        uses: actions/download-artifact@v4
+        with:
+          pattern: firmware-*
+          merge-multiple: true
+          path: release-assets
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.meta.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "${RELEASE_TAG}" > /dev/null 2>&1; then
+            echo "Release ${RELEASE_TAG} already exists, updating assets."
+          else
+            gh release create "${RELEASE_TAG}" \
+              --target "${GITHUB_SHA}" \
+              --title "${RELEASE_TAG}" \
+              --generate-notes
+          fi
+
+          gh release upload "${RELEASE_TAG}" release-assets/*.zip release-assets/*.sha256 --clobber
