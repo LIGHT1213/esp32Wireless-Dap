@@ -19,6 +19,8 @@ typedef struct {
     uint32_t clock_hz;
     uint32_t half_period_us;
     uint32_t half_period_cycles;
+    uint8_t turnaround_cycles;
+    bool data_phase;
     bool initialized;
 } swd_phy_state_t;
 
@@ -159,44 +161,40 @@ static uint32_t read_bits(uint8_t count)
 static void turnaround_to_read(void)
 {
     set_swdio_input();
-    clock_cycle();
+    for (uint8_t i = 0; i < s_state.turnaround_cycles; ++i) {
+        clock_cycle();
+    }
 }
 
 static void turnaround_to_write(void)
 {
-    clock_cycle();
-    set_swdio_output(1);
-}
-
-static void backoff_read_phase(uint8_t ack)
-{
-    uint32_t cycles = 0;
-
-    if (ack == WDAP_ACK_WAIT || ack == WDAP_ACK_FAULT) {
-        cycles = 33U;
-    } else {
-        cycles = 34U;
-    }
-
-    for (uint32_t i = 0; i < cycles; ++i) {
+    for (uint8_t i = 0; i < s_state.turnaround_cycles; ++i) {
         clock_cycle();
     }
     set_swdio_output(1);
 }
 
-static void backoff_write_phase(uint8_t ack)
+static void backoff_after_ack(bool read_request, uint8_t ack)
 {
     if (ack == WDAP_ACK_WAIT || ack == WDAP_ACK_FAULT) {
-        clock_cycle();
-        set_swdio_output(0);
-        for (uint32_t i = 0; i < 33U; ++i) {
-            clock_cycle();
+        if (s_state.data_phase && read_request) {
+            for (uint32_t i = 0; i < 33U; ++i) {
+                clock_cycle();
+            }
+        }
+        turnaround_to_write();
+        if (s_state.data_phase && !read_request) {
+            gpio_set_level((gpio_num_t)s_state.swdio_gpio, 0);
+            for (uint32_t i = 0; i < 33U; ++i) {
+                clock_cycle();
+            }
         }
         gpio_set_level((gpio_num_t)s_state.swdio_gpio, 1);
         return;
     }
 
-    for (uint32_t i = 0; i < 34U; ++i) {
+    const uint32_t cycles = (uint32_t)s_state.turnaround_cycles + 33U;
+    for (uint32_t i = 0; i < cycles; ++i) {
         clock_cycle();
     }
     set_swdio_output(1);
@@ -231,7 +229,7 @@ static esp_err_t read_register(bool apndp, uint8_t addr, uint32_t *value, uint8_
     *ack = (uint8_t)read_bits(3);
     if (*ack != WDAP_ACK_OK) {
         log_invalid_ack(apndp ? "READ_AP" : "READ_DP", request, *ack);
-        backoff_read_phase(*ack);
+        backoff_after_ack(true, *ack);
         return ESP_FAIL;
     }
 
@@ -264,7 +262,7 @@ static esp_err_t write_register(bool apndp, uint8_t addr, uint32_t value, uint8_
     *ack = (uint8_t)read_bits(3);
     if (*ack != WDAP_ACK_OK) {
         log_invalid_ack(apndp ? "WRITE_AP" : "WRITE_DP", request, *ack);
-        backoff_write_phase(*ack);
+        backoff_after_ack(false, *ack);
         return ESP_FAIL;
     }
 
@@ -306,6 +304,7 @@ esp_err_t swd_phy_init(const swd_phy_config_t *config)
     ESP_ERROR_CHECK(gpio_set_level((gpio_num_t)s_state.swdio_gpio, 1));
 
     ESP_ERROR_CHECK(swd_phy_set_clock(config->clock_hz));
+    ESP_ERROR_CHECK(swd_phy_set_transfer_config(1, 0));
     s_state.initialized = true;
 
     ESP_LOGI(TAG, "real swd phy ready swclk=%d swdio=%d hz=%" PRIu32,
@@ -333,6 +332,17 @@ esp_err_t swd_phy_set_clock(uint32_t hz)
     return ESP_OK;
 }
 
+esp_err_t swd_phy_set_transfer_config(uint8_t turnaround, uint8_t data_phase)
+{
+    if (turnaround == 0U) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    s_state.turnaround_cycles = turnaround;
+    s_state.data_phase = data_phase != 0U;
+    return ESP_OK;
+}
+
 esp_err_t swd_phy_write_idle_bits(uint8_t bit, uint32_t count)
 {
     if (!s_state.initialized) {
@@ -343,6 +353,81 @@ esp_err_t swd_phy_write_idle_bits(uint8_t bit, uint32_t count)
     for (uint32_t i = 0; i < count; ++i) {
         clock_cycle();
     }
+    gpio_set_level((gpio_num_t)s_state.swdio_gpio, 1);
+    return ESP_OK;
+}
+
+esp_err_t swd_phy_drive_pins(uint8_t value, uint8_t select)
+{
+    if (!s_state.initialized) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    if ((select & WDAP_SWJ_PIN_SWCLK_TCK) != 0U) {
+        gpio_set_level((gpio_num_t)s_state.swclk_gpio,
+                       (value & WDAP_SWJ_PIN_SWCLK_TCK) != 0U ? 1 : 0);
+    }
+
+    if ((select & WDAP_SWJ_PIN_SWDIO_TMS) != 0U) {
+        set_swdio_output((value & WDAP_SWJ_PIN_SWDIO_TMS) != 0U ? 1 : 0);
+    }
+
+    return ESP_OK;
+}
+
+esp_err_t swd_phy_read_pins(uint8_t *pins)
+{
+    if (!s_state.initialized || pins == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    uint8_t value = 0;
+    if (gpio_get_level((gpio_num_t)s_state.swclk_gpio) != 0) {
+        value |= WDAP_SWJ_PIN_SWCLK_TCK;
+    }
+    if (gpio_get_level((gpio_num_t)s_state.swdio_gpio) != 0) {
+        value |= WDAP_SWJ_PIN_SWDIO_TMS;
+    }
+
+    *pins = value;
+    return ESP_OK;
+}
+
+esp_err_t swd_phy_swd_sequence(uint32_t info, const uint8_t *swdo, uint8_t *swdi)
+{
+    if (!s_state.initialized) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    uint32_t count_bits = info & 0x3FU;
+    if (count_bits == 0U) {
+        count_bits = 64U;
+    }
+
+    const uint32_t count_bytes = (count_bits + 7U) / 8U;
+    const bool capture = (info & 0x80U) != 0U;
+
+    if (capture) {
+        if (swdi == NULL) {
+            return ESP_ERR_INVALID_ARG;
+        }
+        memset(swdi, 0, count_bytes);
+        set_swdio_input();
+        for (uint32_t bit = 0; bit < count_bits; ++bit) {
+            const uint8_t bit_val = read_bit();
+            swdi[bit / 8U] |= (uint8_t)(bit_val << (bit % 8U));
+        }
+    } else {
+        if (swdo == NULL) {
+            return ESP_ERR_INVALID_ARG;
+        }
+        set_swdio_output(1);
+        for (uint32_t bit = 0; bit < count_bits; ++bit) {
+            const uint8_t bit_val = (uint8_t)((swdo[bit / 8U] >> (bit % 8U)) & 1U);
+            write_bit(bit_val);
+        }
+    }
+
     gpio_set_level((gpio_num_t)s_state.swdio_gpio, 1);
     return ESP_OK;
 }

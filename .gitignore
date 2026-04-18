@@ -9,3 +9,4 @@ frontend_a/sdkconfig.old
 backend_b/sdkconfig.old
 
 *.tmp
+logs/

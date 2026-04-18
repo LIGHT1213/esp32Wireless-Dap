@@ -17,6 +17,26 @@ static const char *TAG = "dap_backend";
 #define DAP_TRANSFER_FAULT BIT(2)
 #define DAP_TRANSFER_ERROR BIT(3)
 #define DAP_TRANSFER_MISMATCH BIT(4)
+#define DAP_OK 0x00U
+
+typedef struct {
+    uint16_t retry_count;
+    uint16_t match_retry;
+} dap_transfer_settings_t;
+
+static dap_transfer_settings_t s_transfer_settings = {
+    .retry_count = 5,
+    .match_retry = 5,
+};
+
+typedef esp_err_t (*dap_read_fn_t)(uint8_t addr, uint32_t *value, uint8_t *ack);
+typedef esp_err_t (*dap_write_fn_t)(uint8_t addr, uint32_t value, uint8_t *ack);
+
+static esp_err_t read_dp_idcode_adapter(uint8_t addr, uint32_t *value, uint8_t *ack)
+{
+    (void)addr;
+    return swd_engine_read_dp_idcode(value, ack);
+}
 
 static uint32_t read_u32_le(const uint8_t *data)
 {
@@ -96,6 +116,50 @@ static esp_err_t handle_ping(const wdap_message_t *request, wdap_message_t *resp
     return append_payload(response, &payload, sizeof(payload));
 }
 
+static esp_err_t execute_read_with_retry(dap_read_fn_t fn,
+                                         uint8_t addr,
+                                         uint32_t *value,
+                                         uint8_t *ack,
+                                         uint16_t retry_count)
+{
+    uint8_t local_ack = WDAP_ACK_NONE;
+    esp_err_t err = ESP_FAIL;
+
+    for (uint16_t attempt = 0; attempt <= retry_count; ++attempt) {
+        err = fn(addr, value, &local_ack);
+        if (local_ack != WDAP_ACK_WAIT && err != ESP_ERR_TIMEOUT) {
+            break;
+        }
+    }
+
+    if (ack != NULL) {
+        *ack = local_ack;
+    }
+    return err;
+}
+
+static esp_err_t execute_write_with_retry(dap_write_fn_t fn,
+                                          uint8_t addr,
+                                          uint32_t value,
+                                          uint8_t *ack,
+                                          uint16_t retry_count)
+{
+    uint8_t local_ack = WDAP_ACK_NONE;
+    esp_err_t err = ESP_FAIL;
+
+    for (uint16_t attempt = 0; attempt <= retry_count; ++attempt) {
+        err = fn(addr, value, &local_ack);
+        if (local_ack != WDAP_ACK_WAIT && err != ESP_ERR_TIMEOUT) {
+            break;
+        }
+    }
+
+    if (ack != NULL) {
+        *ack = local_ack;
+    }
+    return err;
+}
+
 static esp_err_t handle_get_version(wdap_message_t *response)
 {
     char version[96];
@@ -162,6 +226,70 @@ static esp_err_t handle_target_reset_drive(const wdap_message_t *request, wdap_m
     return swd_engine_target_reset_drive(drive->asserted != 0U);
 }
 
+static esp_err_t handle_swj_pins(const wdap_message_t *request, wdap_message_t *response)
+{
+    if (request->payload_len < sizeof(wdap_swj_pins_request_t)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const wdap_swj_pins_request_t *pins_req = (const wdap_swj_pins_request_t *)request->payload;
+    wdap_swj_pins_response_t pins_resp = {0};
+    ESP_RETURN_ON_ERROR(swd_engine_swj_pins(pins_req->value,
+                                            pins_req->select,
+                                            pins_req->wait_us,
+                                            &pins_resp.pins),
+                        TAG,
+                        "swj pins failed");
+    response->ack = WDAP_ACK_OK;
+    return append_payload(response, &pins_resp, sizeof(pins_resp));
+}
+
+static esp_err_t handle_swd_sequence(const wdap_message_t *request, wdap_message_t *response)
+{
+    if (request->payload_len < 1U) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    const uint8_t *cursor = request->payload;
+    const uint8_t *end = request->payload + request->payload_len;
+    const uint8_t sequence_count = *cursor++;
+    uint8_t resp_payload[WDAP_MAX_PAYLOAD] = {0};
+    uint8_t *dst = resp_payload;
+
+    *dst++ = DAP_OK;
+
+    for (uint8_t i = 0; i < sequence_count; ++i) {
+        if (cursor >= end) {
+            return ESP_ERR_INVALID_ARG;
+        }
+
+        const uint8_t info = *cursor++;
+        uint32_t count_bits = info & 0x3FU;
+        if (count_bits == 0U) {
+            count_bits = 64U;
+        }
+        const uint32_t count_bytes = (count_bits + 7U) / 8U;
+        const bool capture = (info & 0x80U) != 0U;
+
+        if (capture) {
+            if ((size_t)(&resp_payload[WDAP_MAX_PAYLOAD] - dst) < count_bytes) {
+                return ESP_ERR_INVALID_SIZE;
+            }
+            ESP_RETURN_ON_ERROR(swd_engine_swd_sequence(info, NULL, dst), TAG, "swd capture sequence failed");
+            dst += count_bytes;
+        } else {
+            if ((size_t)(end - cursor) < count_bytes) {
+                return ESP_ERR_INVALID_ARG;
+            }
+            ESP_RETURN_ON_ERROR(swd_engine_swd_sequence(info, cursor, NULL), TAG, "swd output sequence failed");
+            cursor += count_bytes;
+        }
+    }
+
+    response->ack = WDAP_ACK_OK;
+    return append_payload(response, resp_payload, (size_t)(dst - resp_payload));
+}
+
 static esp_err_t handle_transfer_config(const wdap_message_t *request, wdap_message_t *response)
 {
     if (request->payload_len < sizeof(wdap_transfer_config_request_t)) {
@@ -169,6 +297,8 @@ static esp_err_t handle_transfer_config(const wdap_message_t *request, wdap_mess
     }
 
     const wdap_transfer_config_request_t *cfg = (const wdap_transfer_config_request_t *)request->payload;
+    s_transfer_settings.retry_count = cfg->retry_count;
+    s_transfer_settings.match_retry = cfg->match_retry;
     response->ack = WDAP_ACK_OK;
     return swd_engine_set_transfer_config(cfg->idle_cycles, cfg->turnaround, cfg->data_phase);
 }
@@ -186,8 +316,16 @@ static esp_err_t handle_read_dp(uint8_t addr, wdap_message_t *response)
     uint8_t ack = WDAP_ACK_NONE;
     wdap_reg_value_response_t payload = {0};
     const esp_err_t err = (addr == 0x00U)
-                              ? swd_engine_read_dp_idcode(&payload.value, &ack)
-                              : swd_engine_read_dp(addr, &payload.value, &ack);
+                              ? execute_read_with_retry(read_dp_idcode_adapter,
+                                                        addr,
+                                                        &payload.value,
+                                                        &ack,
+                                                        s_transfer_settings.retry_count)
+                              : execute_read_with_retry(swd_engine_read_dp,
+                                                        addr,
+                                                        &payload.value,
+                                                        &ack,
+                                                        s_transfer_settings.retry_count);
     response->ack = ack;
     if (err != ESP_OK) {
         return err;
@@ -204,7 +342,11 @@ static esp_err_t handle_write_dp(const wdap_message_t *request, wdap_message_t *
 
     const wdap_reg_write_request_t *write = (const wdap_reg_write_request_t *)request->payload;
     uint8_t ack = WDAP_ACK_NONE;
-    const esp_err_t err = swd_engine_write_dp(write->addr, write->value, &ack);
+    const esp_err_t err = execute_write_with_retry(swd_engine_write_dp,
+                                                   write->addr,
+                                                   write->value,
+                                                   &ack,
+                                                   s_transfer_settings.retry_count);
     response->ack = ack;
     return err;
 }
@@ -213,7 +355,11 @@ static esp_err_t handle_read_ap(uint8_t addr, wdap_message_t *response)
 {
     uint8_t ack = WDAP_ACK_NONE;
     wdap_reg_value_response_t payload = {0};
-    const esp_err_t err = swd_engine_read_ap(addr, &payload.value, &ack);
+    const esp_err_t err = execute_read_with_retry(swd_engine_read_ap,
+                                                  addr,
+                                                  &payload.value,
+                                                  &ack,
+                                                  s_transfer_settings.retry_count);
     response->ack = ack;
     if (err != ESP_OK) {
         return err;
@@ -230,7 +376,11 @@ static esp_err_t handle_write_ap(const wdap_message_t *request, wdap_message_t *
 
     const wdap_reg_write_request_t *write = (const wdap_reg_write_request_t *)request->payload;
     uint8_t ack = WDAP_ACK_NONE;
-    const esp_err_t err = swd_engine_write_ap(write->addr, write->value, &ack);
+    const esp_err_t err = execute_write_with_retry(swd_engine_write_ap,
+                                                   write->addr,
+                                                   write->value,
+                                                   &ack,
+                                                   s_transfer_settings.retry_count);
     response->ack = ack;
     return err;
 }
@@ -259,9 +409,17 @@ static esp_err_t handle_write_block(const wdap_message_t *request, wdap_message_
         uint8_t transfer_ack = WDAP_ACK_NONE;
         esp_err_t err;
         if (apndp) {
-            err = swd_engine_write_ap(addr, value, &transfer_ack);
+            err = execute_write_with_retry(swd_engine_write_ap,
+                                           addr,
+                                           value,
+                                           &transfer_ack,
+                                           s_transfer_settings.retry_count);
         } else {
-            err = swd_engine_write_dp(addr, value, &transfer_ack);
+            err = execute_write_with_retry(swd_engine_write_dp,
+                                           addr,
+                                           value,
+                                           &transfer_ack,
+                                           s_transfer_settings.retry_count);
         }
         if (transfer_ack == WDAP_ACK_NONE) {
             ack = WDAP_ACK_FAULT;
@@ -306,9 +464,17 @@ static esp_err_t handle_read_block(const wdap_message_t *request, wdap_message_t
         uint8_t transfer_ack = WDAP_ACK_NONE;
         esp_err_t err;
         if (apndp) {
-            err = swd_engine_read_ap(addr, &value, &transfer_ack);
+            err = execute_read_with_retry(swd_engine_read_ap,
+                                          addr,
+                                          &value,
+                                          &transfer_ack,
+                                          s_transfer_settings.retry_count);
         } else {
-            err = swd_engine_read_dp(addr, &value, &transfer_ack);
+            err = execute_read_with_retry(swd_engine_read_dp,
+                                          addr,
+                                          &value,
+                                          &transfer_ack,
+                                          s_transfer_settings.retry_count);
         }
         if (transfer_ack == WDAP_ACK_NONE) {
             ack = WDAP_ACK_FAULT;
@@ -377,11 +543,23 @@ static esp_err_t handle_transfer_sequence(const wdap_message_t *request, wdap_me
             uint16_t retries = hdr->match_retry;
             do {
                 if (apndp) {
-                    err = swd_engine_read_ap(addr, &value, &transfer_ack);
+                    err = execute_read_with_retry(swd_engine_read_ap,
+                                                  addr,
+                                                  &value,
+                                                  &transfer_ack,
+                                                  hdr->retry_count);
                 } else if (addr == 0x00U) {
-                    err = swd_engine_read_dp_idcode(&value, &transfer_ack);
+                    err = execute_read_with_retry(read_dp_idcode_adapter,
+                                                  addr,
+                                                  &value,
+                                                  &transfer_ack,
+                                                  hdr->retry_count);
                 } else {
-                    err = swd_engine_read_dp(addr, &value, &transfer_ack);
+                    err = execute_read_with_retry(swd_engine_read_dp,
+                                                  addr,
+                                                  &value,
+                                                  &transfer_ack,
+                                                  hdr->retry_count);
                 }
 
                 if (transfer_ack == WDAP_ACK_NONE) {
@@ -419,9 +597,17 @@ static esp_err_t handle_transfer_sequence(const wdap_message_t *request, wdap_me
                 match_mask = value;
             } else {
                 if (apndp) {
-                    err = swd_engine_write_ap(addr, value, &transfer_ack);
+                    err = execute_write_with_retry(swd_engine_write_ap,
+                                                   addr,
+                                                   value,
+                                                   &transfer_ack,
+                                                   hdr->retry_count);
                 } else {
-                    err = swd_engine_write_dp(addr, value, &transfer_ack);
+                    err = execute_write_with_retry(swd_engine_write_dp,
+                                                   addr,
+                                                   value,
+                                                   &transfer_ack,
+                                                   hdr->retry_count);
                 }
 
                 if (transfer_ack == WDAP_ACK_NONE) {
@@ -465,6 +651,10 @@ static esp_err_t handle_request(const wdap_message_t *request, wdap_message_t *r
         return handle_target_reset_drive(request, response);
     case WDAP_CMD_SET_TRANSFER_CONFIG:
         return handle_transfer_config(request, response);
+    case WDAP_CMD_SWJ_PINS:
+        return handle_swj_pins(request, response);
+    case WDAP_CMD_SWD_SEQUENCE:
+        return handle_swd_sequence(request, response);
     case WDAP_CMD_TARGET_HALT:
         return handle_target_halt(response);
     case WDAP_CMD_READ_DP_IDCODE:

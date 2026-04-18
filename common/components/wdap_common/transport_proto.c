@@ -181,6 +181,10 @@ const char *wdap_cmd_to_string(uint8_t cmd)
         return "SWD_TRANSFER_SEQUENCE";
     case WDAP_CMD_SWJ_SEQUENCE:
         return "SWJ_SEQUENCE";
+    case WDAP_CMD_SWJ_PINS:
+        return "SWJ_PINS";
+    case WDAP_CMD_SWD_SEQUENCE:
+        return "SWD_SEQUENCE";
     default:
         return "UNKNOWN";
     }

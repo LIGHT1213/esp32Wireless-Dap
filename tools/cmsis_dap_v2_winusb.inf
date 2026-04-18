@@ -1,0 +1,30 @@
+[Version]
+Signature="$WINDOWS NT$"
+Class=USBDevice
+ClassGuid={88BAE032-5A81-49F0-BC3D-A4FF138216D6}
+Provider=%ProviderName%
+DriverVer=04/18/2026,1.0.0.0
+
+[Manufacturer]
+%ProviderName%=DeviceList,NTamd64
+
+[DeviceList.NTamd64]
+%DeviceName%=WinUSB_Install,USB\VID_303A&PID_4044
+
+[WinUSB_Install]
+Include=winusb.inf
+Needs=WINUSB.NT
+
+[WinUSB_Install.Services]
+Include=winusb.inf
+Needs=WINUSB.NT.Services
+
+[WinUSB_Install.HW]
+AddReg=DeviceInterfaceGUIDs_AddReg
+
+[DeviceInterfaceGUIDs_AddReg]
+HKR,,DeviceInterfaceGUIDs,0x10000,"{CDB3B5AD-293B-4663-AA36-1AAE46463776}"
+
+[Strings]
+ProviderName="wireless-dap"
+DeviceName="CMSIS-DAP v2"

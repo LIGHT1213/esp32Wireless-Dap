@@ -9,6 +9,8 @@ esp_err_t swd_engine_init(void);
 esp_err_t swd_engine_set_frequency(uint32_t hz);
 esp_err_t swd_engine_line_reset(uint8_t *ack);
 esp_err_t swd_engine_swj_sequence(uint32_t count, const uint8_t *data);
+esp_err_t swd_engine_swd_sequence(uint32_t info, const uint8_t *swdo, uint8_t *swdi);
+esp_err_t swd_engine_swj_pins(uint8_t value, uint8_t select, uint32_t wait_us, uint8_t *pins);
 esp_err_t swd_engine_target_reset(void);
 esp_err_t swd_engine_target_reset_drive(bool asserted);
 esp_err_t swd_engine_set_transfer_config(uint8_t idle_cycles, uint8_t turnaround, uint8_t data_phase);

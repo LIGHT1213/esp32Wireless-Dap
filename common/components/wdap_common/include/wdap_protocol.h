@@ -37,6 +37,8 @@ typedef enum {
     WDAP_CMD_SET_TRANSFER_CONFIG = 0x1C,
     WDAP_CMD_SWD_TRANSFER_SEQUENCE = 0x1D,
     WDAP_CMD_SWJ_SEQUENCE = 0x1E,
+    WDAP_CMD_SWJ_PINS = 0x1F,
+    WDAP_CMD_SWD_SEQUENCE = 0x20,
 } wdap_cmd_t;
 
 typedef enum {
@@ -72,6 +74,10 @@ typedef enum {
     WDAP_CAP_AP_ACCESS = 1UL << 7,
     WDAP_CAP_TARGET_HALT = 1UL << 8,
 } wdap_cap_flags_t;
+
+#define WDAP_SWJ_PIN_SWCLK_TCK 0x01U
+#define WDAP_SWJ_PIN_SWDIO_TMS 0x02U
+#define WDAP_SWJ_PIN_nRESET    0x80U
 
 typedef struct {
     uint8_t msg_type;
@@ -119,6 +125,17 @@ typedef struct {
 typedef struct {
     uint8_t asserted;
 } wdap_target_reset_drive_request_t;
+
+typedef struct {
+    uint8_t value;
+    uint8_t select;
+    uint16_t reserved;
+    uint32_t wait_us;
+} wdap_swj_pins_request_t;
+
+typedef struct {
+    uint8_t pins;
+} wdap_swj_pins_response_t;
 
 typedef struct {
     uint8_t idle_cycles;

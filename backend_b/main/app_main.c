@@ -25,6 +25,11 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+    esp_log_level_set("dap_backend", ESP_LOG_DEBUG);
+    esp_log_level_set("swd_engine", ESP_LOG_DEBUG);
+    esp_log_level_set("swd_phy", ESP_LOG_DEBUG);
+    esp_log_level_set("wifi_link_b", ESP_LOG_DEBUG);
+
     ESP_ERROR_CHECK(board_support_init());
     ESP_ERROR_CHECK(swd_engine_init());
     ESP_ERROR_CHECK(wifi_link_init());

@@ -27,9 +27,12 @@ static const char *TAG = "cmsis_dap_usb";
 #define CMSIS_DAP_HID_EP_IN 0x81
 #define CMSIS_DAP_VENDOR_EP_OUT 0x02
 #define CMSIS_DAP_VENDOR_EP_IN 0x82
-#define CMSIS_DAP_USB_QUEUE_LEN 4U
+#define CMSIS_DAP_USB_QUEUE_LEN 32U
 #define CMSIS_DAP_VENDOR_REQUEST_MICROSOFT 0x20U
 #define CMSIS_DAP_MAX_SWJ_CLOCK_HZ 1000000U
+#define CMSIS_DAP_WORKER_STACK_SIZE 8192U
+#define CMSIS_DAP_STACK_WARN_HWM_WORDS 256U
+#define CMSIS_DAP_PACKET_COUNT 4U
 
 #define ID_DAP_INFO 0x00U
 #define ID_DAP_HOST_STATUS 0x01U
@@ -46,6 +49,9 @@ static const char *TAG = "cmsis_dap_usb";
 #define ID_DAP_SWJ_CLOCK 0x11U
 #define ID_DAP_SWJ_SEQUENCE 0x12U
 #define ID_DAP_SWD_CONFIGURE 0x13U
+#define ID_DAP_SWD_SEQUENCE 0x1DU
+#define ID_DAP_QUEUE_COMMANDS 0x7EU
+#define ID_DAP_EXECUTE_COMMANDS 0x7FU
 
 #define DAP_OK 0x00U
 #define DAP_ERROR 0xFFU
@@ -82,13 +88,16 @@ static const char *TAG = "cmsis_dap_usb";
 #define DAP_TRANSFER_FAULT BIT(2)
 #define DAP_TRANSFER_ERROR BIT(3)
 #define DAP_TRANSFER_MISMATCH BIT(4)
+#define DAP_TRANSFER_NO_ACK 0x07U
 
 #define CMSIS_DAP_CAP_SWD BIT(0)
 #define CMSIS_DAP_CAP_ATOMIC BIT(4)
 
-#define TUSB_DESC_TOTAL_LEN (TUD_CONFIG_DESC_LEN + CFG_TUD_HID * TUD_HID_INOUT_DESC_LEN + CFG_TUD_VENDOR * TUD_VENDOR_DESC_LEN)
+#define TUSB_DESC_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_VENDOR_DESC_LEN)
 #define CMSIS_DAP_BOS_TOTAL_LEN (TUD_BOS_DESC_LEN + TUD_BOS_MICROSOFT_OS_DESC_LEN)
-#define CMSIS_DAP_MS_OS_20_DESC_LEN 0x00B2U
+#define CMSIS_DAP_MS_OS_20_DESC_LEN 0x00AAU
+#define CMSIS_DAP_V2_INTERFACE_NUMBER 0U
+#define CMSIS_DAP_V2_INTERFACE_STRING_INDEX 4U
 
 typedef enum {
     CMSIS_DAP_TRANSPORT_HID = 0,
@@ -116,11 +125,13 @@ typedef struct {
     uint32_t dp_select;
     uint32_t swj_clock_hz;
     char serial[13];
+    bool worker_stack_warning_logged;
     bool initialized;
 } cmsis_dap_state_t;
 
 static cmsis_dap_state_t s_state = {
     .debug_port = DAP_PORT_DISABLED,
+    .swj_pins = BIT(DAP_SWJ_SWCLK_TCK) | BIT(DAP_SWJ_SWDIO_TMS) | BIT(DAP_SWJ_nRESET),
     .swd_turnaround = 1,
     .retry_count = 5,
     .match_retry = 5,
@@ -148,9 +159,8 @@ static const uint8_t s_hid_report_descriptor[] = {
 static const char *s_string_descriptor[] = {
     (char[]){0x09, 0x04},
     "wireless-dap",
-    "Wireless CMSIS-DAP",
+    "CMSIS-DAP v2",
     s_state.serial,
-    "CMSIS-DAP v1",
     "CMSIS-DAP v2",
 };
 
@@ -158,12 +168,12 @@ static const tusb_desc_device_t s_device_descriptor = {
     .bLength = sizeof(tusb_desc_device_t),
     .bDescriptorType = TUSB_DESC_DEVICE,
     .bcdUSB = 0x0210,
-    .bDeviceClass = TUSB_CLASS_MISC,
-    .bDeviceSubClass = MISC_SUBCLASS_COMMON,
-    .bDeviceProtocol = MISC_PROTOCOL_IAD,
+    .bDeviceClass = 0x00,
+    .bDeviceSubClass = 0x00,
+    .bDeviceProtocol = 0x00,
     .bMaxPacketSize0 = CFG_TUD_ENDPOINT0_SIZE,
     .idVendor = 0x303A,
-    .idProduct = 0x4042,
+    .idProduct = 0x4044,
     .bcdDevice = 0x0100,
     .iManufacturer = 0x01,
     .iProduct = 0x02,
@@ -172,9 +182,12 @@ static const tusb_desc_device_t s_device_descriptor = {
 };
 
 static const uint8_t s_configuration_descriptor[] = {
-    TUD_CONFIG_DESCRIPTOR(1, 2, 0, TUSB_DESC_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
-    TUD_HID_INOUT_DESCRIPTOR(0, 4, false, sizeof(s_hid_report_descriptor), CMSIS_DAP_HID_EP_OUT, CMSIS_DAP_HID_EP_IN, CMSIS_DAP_PACKET_SIZE, 1),
-    TUD_VENDOR_DESCRIPTOR(1, 5, CMSIS_DAP_VENDOR_EP_OUT, CMSIS_DAP_VENDOR_EP_IN, CMSIS_DAP_PACKET_SIZE),
+    TUD_CONFIG_DESCRIPTOR(1, 1, 0, TUSB_DESC_TOTAL_LEN, TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP, 100),
+    TUD_VENDOR_DESCRIPTOR(CMSIS_DAP_V2_INTERFACE_NUMBER,
+                          CMSIS_DAP_V2_INTERFACE_STRING_INDEX,
+                          CMSIS_DAP_VENDOR_EP_OUT,
+                          CMSIS_DAP_VENDOR_EP_IN,
+                          CMSIS_DAP_PACKET_SIZE),
 };
 
 static const uint8_t s_bos_descriptor[] = {
@@ -182,22 +195,20 @@ static const uint8_t s_bos_descriptor[] = {
     TUD_BOS_MS_OS_20_DESCRIPTOR(CMSIS_DAP_MS_OS_20_DESC_LEN, CMSIS_DAP_VENDOR_REQUEST_MICROSOFT),
 };
 
-static const uint8_t s_ms_os_20_descriptor[] = {
+static uint8_t s_ms_os_20_descriptor[] = {
     U16_TO_U8S_LE(0x000A), U16_TO_U8S_LE(MS_OS_20_SET_HEADER_DESCRIPTOR), U32_TO_U8S_LE(0x06030000), U16_TO_U8S_LE(CMSIS_DAP_MS_OS_20_DESC_LEN),
-    U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_CONFIGURATION), 0, 0, U16_TO_U8S_LE(CMSIS_DAP_MS_OS_20_DESC_LEN - 0x000A),
-    U16_TO_U8S_LE(0x0008), U16_TO_U8S_LE(MS_OS_20_SUBSET_HEADER_FUNCTION), 1, 0, U16_TO_U8S_LE(CMSIS_DAP_MS_OS_20_DESC_LEN - 0x000A - 0x0008),
     U16_TO_U8S_LE(0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_COMPATBLE_ID),
     'W', 'I', 'N', 'U', 'S', 'B', 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    U16_TO_U8S_LE(CMSIS_DAP_MS_OS_20_DESC_LEN - 0x000A - 0x0008 - 0x0008 - 0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
+    U16_TO_U8S_LE(CMSIS_DAP_MS_OS_20_DESC_LEN - 0x000A - 0x0014), U16_TO_U8S_LE(MS_OS_20_FEATURE_REG_PROPERTY),
     U16_TO_U8S_LE(0x0007), U16_TO_U8S_LE(0x002A),
     'D', 0x00, 'e', 0x00, 'v', 0x00, 'i', 0x00, 'c', 0x00, 'e', 0x00, 'I', 0x00, 'n', 0x00, 't', 0x00, 'e', 0x00,
     'r', 0x00, 'f', 0x00, 'a', 0x00, 'c', 0x00, 'e', 0x00, 'G', 0x00, 'U', 0x00, 'I', 0x00, 'D', 0x00, 's', 0x00, 0x00, 0x00,
     U16_TO_U8S_LE(0x0050),
-    '{', 0x00, 'A', 0x00, '8', 0x00, '8', 0x00, '3', 0x00, '1', 0x00, '2', 0x00, '3', 0x00, '9', 0x00, '-', 0x00,
-    'D', 0x00, '7', 0x00, 'C', 0x00, 'B', 0x00, '-', 0x00, '4', 0x00, 'E', 0x00, '9', 0x00, 'C', 0x00, '-', 0x00,
-    'A', 0x00, '7', 0x00, '5', 0x00, 'F', 0x00, '-', 0x00, 'E', 0x00, '2', 0x00, 'D', 0x00, 'D', 0x00, 'D', 0x00,
-    '3', 0x00, '9', 0x00, '2', 0x00, 'E', 0x00, 'B', 0x00, '3', 0x00, '6', 0x00, '}', 0x00, 0x00, 0x00, 0x00, 0x00,
+    '{', 0x00, 'C', 0x00, 'D', 0x00, 'B', 0x00, '3', 0x00, 'B', 0x00, '5', 0x00, 'A', 0x00, 'D', 0x00, '-', 0x00,
+    '2', 0x00, '9', 0x00, '3', 0x00, 'B', 0x00, '-', 0x00, '4', 0x00, '6', 0x00, '6', 0x00, '3', 0x00, '-', 0x00,
+    'A', 0x00, 'A', 0x00, '3', 0x00, '6', 0x00, '-', 0x00, '1', 0x00, 'A', 0x00, 'A', 0x00, 'E', 0x00, '4', 0x00,
+    '6', 0x00, '4', 0x00, '6', 0x00, '3', 0x00, '7', 0x00, '7', 0x00, '6', 0x00, '}', 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
 static uint32_t read_u32_le(const uint8_t *data)
@@ -219,13 +230,19 @@ static void write_u32_le(uint8_t *data, uint32_t value)
 static uint8_t wdap_ack_to_dap(uint8_t ack, esp_err_t err, uint8_t status)
 {
     if (status == WDAP_STATUS_OK) {
+        if ((ack & WDAP_ACK_OK) != 0U) {
+            return DAP_TRANSFER_OK;
+        }
         if ((ack & WDAP_ACK_WAIT) != 0U) {
             return DAP_TRANSFER_WAIT;
         }
         if ((ack & WDAP_ACK_FAULT) != 0U) {
             return DAP_TRANSFER_FAULT;
         }
-        return DAP_TRANSFER_OK;
+        if (ack == WDAP_ACK_NONE) {
+            return DAP_TRANSFER_NO_ACK;
+        }
+        return DAP_TRANSFER_ERROR;
     }
 
     if ((ack & WDAP_ACK_WAIT) != 0U || err == ESP_ERR_TIMEOUT || status == WDAP_STATUS_TIMEOUT) {
@@ -234,6 +251,9 @@ static uint8_t wdap_ack_to_dap(uint8_t ack, esp_err_t err, uint8_t status)
     if ((ack & WDAP_ACK_FAULT) != 0U) {
         return DAP_TRANSFER_FAULT;
     }
+    if (ack == WDAP_ACK_NONE || status == WDAP_STATUS_NO_TARGET) {
+        return DAP_TRANSFER_NO_ACK;
+    }
     return DAP_TRANSFER_ERROR;
 }
 
@@ -241,6 +261,8 @@ static esp_err_t transact(uint8_t cmd, const void *payload, uint16_t payload_len
 {
     return session_mgr_send_command(cmd, payload, payload_len, response, CONFIG_WDAP_REQUEST_TIMEOUT_MS);
 }
+
+static esp_err_t do_read_reg(bool apndp, uint8_t addr, uint32_t *value, uint8_t *response_value);
 
 static uint8_t do_line_reset(void)
 {
@@ -255,18 +277,6 @@ static uint8_t do_target_reset(void)
 {
     wdap_message_t response = {0};
     if (transact(WDAP_CMD_TARGET_RESET, NULL, 0, &response) != ESP_OK) {
-        return DAP_ERROR;
-    }
-    return (response.status == WDAP_STATUS_OK) ? DAP_OK : DAP_ERROR;
-}
-
-static uint8_t do_target_reset_drive(bool asserted)
-{
-    wdap_target_reset_drive_request_t request = {
-        .asserted = asserted ? 1U : 0U,
-    };
-    wdap_message_t response = {0};
-    if (transact(WDAP_CMD_TARGET_RESET_DRIVE, &request, sizeof(request), &response) != ESP_OK) {
         return DAP_ERROR;
     }
     return (response.status == WDAP_STATUS_OK) ? DAP_OK : DAP_ERROR;
@@ -304,6 +314,12 @@ static uint8_t do_set_transfer_config(void)
         return DAP_ERROR;
     }
     return (response.status == WDAP_STATUS_OK) ? DAP_OK : DAP_ERROR;
+}
+
+static esp_err_t do_check_write(uint8_t *response_value)
+{
+    uint32_t ignored = 0;
+    return do_read_reg(false, 0x0CU, &ignored, response_value);
 }
 
 static esp_err_t do_read_reg(bool apndp, uint8_t addr, uint32_t *value, uint8_t *response_value)
@@ -402,11 +418,11 @@ static size_t handle_dap_info(const uint8_t *request, uint8_t *response)
         break;
     case DAP_ID_CAPABILITIES:
         response[1] = 1;
-        response[2] = CMSIS_DAP_CAP_SWD;
+        response[2] = CMSIS_DAP_CAP_SWD | CMSIS_DAP_CAP_ATOMIC;
         return 3;
     case DAP_ID_PACKET_COUNT:
         response[1] = 1;
-        response[2] = 1;
+        response[2] = CMSIS_DAP_PACKET_COUNT;
         return 3;
     case DAP_ID_PACKET_SIZE:
         response[1] = 2;
@@ -430,11 +446,13 @@ static size_t handle_dap_connect(const uint8_t *request, uint8_t *response)
     if (port == DAP_PORT_SWD) {
         s_state.debug_port = DAP_PORT_SWD;
         s_state.dp_select = 0;
+        s_state.swj_pins = BIT(DAP_SWJ_SWCLK_TCK) | BIT(DAP_SWJ_SWDIO_TMS) | BIT(DAP_SWJ_nRESET);
         (void)do_line_reset();
         response[1] = DAP_PORT_SWD;
     } else {
         s_state.debug_port = DAP_PORT_DISABLED;
         s_state.dp_select = 0;
+        s_state.swj_pins = BIT(DAP_SWJ_SWCLK_TCK) | BIT(DAP_SWJ_SWDIO_TMS) | BIT(DAP_SWJ_nRESET);
         response[1] = DAP_PORT_DISABLED;
     }
     return 2;
@@ -444,6 +462,7 @@ static size_t handle_dap_disconnect(uint8_t *response)
 {
     s_state.debug_port = DAP_PORT_DISABLED;
     s_state.dp_select = 0;
+    s_state.swj_pins = BIT(DAP_SWJ_SWCLK_TCK) | BIT(DAP_SWJ_SWDIO_TMS) | BIT(DAP_SWJ_nRESET);
     response[1] = DAP_OK;
     return 2;
 }
@@ -492,6 +511,27 @@ static size_t handle_dap_swd_configure(const uint8_t *request, uint8_t *response
     return 2;
 }
 
+static size_t handle_dap_swd_sequence(const cmsis_dap_packet_t *request, uint8_t *response)
+{
+    wdap_message_t wdap_resp = {0};
+    const uint16_t payload_len = (request->len > 1U) ? (uint16_t)(request->len - 1U) : 0U;
+    const esp_err_t err = transact(WDAP_CMD_SWD_SEQUENCE,
+                                   payload_len > 0U ? &request->data[1] : NULL,
+                                   payload_len,
+                                   &wdap_resp);
+
+    if (err != ESP_OK || wdap_resp.status != WDAP_STATUS_OK || wdap_resp.payload_len == 0U) {
+        response[1] = DAP_ERROR;
+        return 2;
+    }
+
+    const size_t copy_len = (wdap_resp.payload_len > (CMSIS_DAP_PACKET_SIZE - 1U))
+                                ? (CMSIS_DAP_PACKET_SIZE - 1U)
+                                : wdap_resp.payload_len;
+    memcpy(&response[1], wdap_resp.payload, copy_len);
+    return 1U + copy_len;
+}
+
 static size_t handle_dap_transfer_configure(const uint8_t *request, uint8_t *response)
 {
     s_state.idle_cycles = request[1];
@@ -508,8 +548,8 @@ static size_t handle_dap_transfer_configure(const uint8_t *request, uint8_t *res
 
 static size_t handle_dap_write_abort(const uint8_t *request, uint8_t *response)
 {
-    uint8_t transfer_value = DAP_TRANSFER_ERROR;
-    response[1] = (do_write_reg(false, 0x00U, read_u32_le(&request[2]), &transfer_value) == ESP_OK) ? DAP_OK : DAP_ERROR;
+    uint8_t response_value = DAP_TRANSFER_ERROR;
+    response[1] = (do_write_reg(false, 0x00U, read_u32_le(&request[2]), &response_value) == ESP_OK) ? DAP_OK : DAP_ERROR;
     return 2;
 }
 
@@ -517,6 +557,9 @@ static size_t handle_dap_reset_target(uint8_t *response)
 {
     response[1] = do_target_reset();
     response[2] = (response[1] == DAP_OK) ? 1U : 0U;
+    if (response[1] == DAP_OK) {
+        s_state.swj_pins |= BIT(DAP_SWJ_nRESET);
+    }
     return 3;
 }
 
@@ -531,48 +574,29 @@ static size_t handle_dap_delay(const uint8_t *request, uint8_t *response)
 
 static size_t handle_dap_swj_pins(const uint8_t *request, uint8_t *response)
 {
-    const uint8_t value = request[1];
-    const uint8_t select = request[2];
-    const uint32_t wait_us = read_u32_le(&request[3]);
+    const wdap_swj_pins_request_t pins_request = {
+        .value = request[1],
+        .select = request[2],
+        .reserved = 0,
+        .wait_us = read_u32_le(&request[3]),
+    };
     const uint8_t before = s_state.swj_pins;
+    wdap_message_t pins_response = {0};
 
-    if ((select & BIT(DAP_SWJ_SWCLK_TCK)) != 0U) {
-        if ((value & BIT(DAP_SWJ_SWCLK_TCK)) != 0U) {
-            s_state.swj_pins |= BIT(DAP_SWJ_SWCLK_TCK);
-        } else {
-            s_state.swj_pins &= (uint8_t)~BIT(DAP_SWJ_SWCLK_TCK);
-        }
-    }
-    if ((select & BIT(DAP_SWJ_SWDIO_TMS)) != 0U) {
-        if ((value & BIT(DAP_SWJ_SWDIO_TMS)) != 0U) {
-            s_state.swj_pins |= BIT(DAP_SWJ_SWDIO_TMS);
-        } else {
-            s_state.swj_pins &= (uint8_t)~BIT(DAP_SWJ_SWDIO_TMS);
-        }
-    }
-    if ((select & BIT(DAP_SWJ_nRESET)) != 0U) {
-        const bool deasserted = (value & BIT(DAP_SWJ_nRESET)) != 0U;
-        if (do_target_reset_drive(!deasserted) == DAP_OK) {
-            if (deasserted) {
-                s_state.swj_pins |= BIT(DAP_SWJ_nRESET);
-            } else {
-                s_state.swj_pins &= (uint8_t)~BIT(DAP_SWJ_nRESET);
-            }
-        }
+    if (transact(WDAP_CMD_SWJ_PINS, &pins_request, sizeof(pins_request), &pins_response) == ESP_OK &&
+        pins_response.status == WDAP_STATUS_OK &&
+        pins_response.payload_len >= sizeof(wdap_swj_pins_response_t)) {
+        s_state.swj_pins = ((const wdap_swj_pins_response_t *)pins_response.payload)->pins;
     } else {
-        s_state.swj_pins |= BIT(DAP_SWJ_nRESET);
+        s_state.swj_pins = (uint8_t)((s_state.swj_pins & ~pins_request.select) | (pins_request.value & pins_request.select));
     }
 
-    if (wait_us != 0U) {
-        const uint32_t clamped_wait_us = (wait_us > 3000000U) ? 3000000U : wait_us;
-        esp_rom_delay_us(clamped_wait_us);
-    }
     response[1] = s_state.swj_pins;
     ESP_LOGD(TAG,
              "SWJ_PINS value=0x%02x select=0x%02x wait_us=%" PRIu32 " pins_before=0x%02x pins_after=0x%02x",
-             value,
-             select,
-             wait_us,
+             pins_request.value,
+             pins_request.select,
+             pins_request.wait_us,
              before,
              s_state.swj_pins);
     return 2;
@@ -588,8 +612,9 @@ static uint8_t count_read_transfers(const uint8_t *request, uint8_t completed)
         if ((request_value & DAP_TRANSFER_RNW) != 0U) {
             if ((request_value & DAP_TRANSFER_MATCH_VALUE) != 0U) {
                 cursor += sizeof(uint32_t);
+            } else {
+                ++reads;
             }
-            ++reads;
         } else {
             cursor += sizeof(uint32_t);
         }
@@ -720,6 +745,7 @@ static size_t handle_dap_transfer(const uint8_t *request, uint8_t *response)
     uint8_t *payload = &response[3];
     uint8_t completed = 0;
     uint8_t response_value = 0;
+    bool check_write = false;
 
     if (s_state.debug_port != DAP_PORT_SWD) {
         response[1] = 0;
@@ -789,8 +815,11 @@ static size_t handle_dap_transfer(const uint8_t *request, uint8_t *response)
             if (response_value != DAP_TRANSFER_OK) {
                 break;
             }
-            write_u32_le(payload, value);
-            payload += sizeof(uint32_t);
+            if (!use_match) {
+                write_u32_le(payload, value);
+                payload += sizeof(uint32_t);
+            }
+            check_write = false;
         } else {
             value = read_u32_le(cursor);
             cursor += 4;
@@ -803,10 +832,15 @@ static size_t handle_dap_transfer(const uint8_t *request, uint8_t *response)
                 if (err != ESP_OK || response_value != DAP_TRANSFER_OK) {
                     break;
                 }
+                check_write = true;
             }
         }
 
         ++completed;
+    }
+
+    if (response_value == DAP_TRANSFER_OK && check_write) {
+        (void)do_check_write(&response_value);
     }
 
     response[1] = completed;
@@ -922,6 +956,9 @@ static size_t handle_dap_transfer_block(const uint8_t *request, uint8_t *respons
     response[1] = (uint8_t)(completed >> 0);
     response[2] = (uint8_t)(completed >> 8);
     response[3] = response_value;
+    if (!read && completed > 0U && response_value == DAP_TRANSFER_OK) {
+        (void)do_check_write(&response[3]);
+    }
     if (read && completed > 0U) {
         ESP_LOGD(TAG,
                  "DAP_TransferBlock rsp_count=%u rsp_value=0x%02x first_rsp=0x%08" PRIx32,
@@ -932,6 +969,192 @@ static size_t handle_dap_transfer_block(const uint8_t *request, uint8_t *respons
         ESP_LOGD(TAG, "DAP_TransferBlock rsp_count=%u rsp_value=0x%02x", completed, response_value);
     }
     return (read && completed > 0) ? (size_t)(4 + (size_t)completed * sizeof(uint32_t)) : 4;
+}
+
+static size_t handle_dap_queue_commands(uint8_t *response)
+{
+    response[1] = 0U;
+    return 2;
+}
+
+static size_t command_request_length(const uint8_t *request, size_t request_len)
+{
+    if (request_len == 0U) {
+        return 0U;
+    }
+
+    switch (request[0]) {
+    case ID_DAP_INFO:
+        return 2U;
+    case ID_DAP_HOST_STATUS:
+        return 3U;
+    case ID_DAP_CONNECT:
+        return 2U;
+    case ID_DAP_DISCONNECT:
+        return 1U;
+    case ID_DAP_TRANSFER_CONFIGURE:
+        return 6U;
+    case ID_DAP_TRANSFER_ABORT:
+        return 1U;
+    case ID_DAP_WRITE_ABORT:
+        return 6U;
+    case ID_DAP_DELAY:
+        return 3U;
+    case ID_DAP_RESET_TARGET:
+        return 1U;
+    case ID_DAP_SWJ_PINS:
+        return 6U;
+    case ID_DAP_SWJ_CLOCK:
+        return 5U;
+    case ID_DAP_SWD_CONFIGURE:
+        return 2U;
+    case ID_DAP_QUEUE_COMMANDS:
+        return 1U;
+    case ID_DAP_SWJ_SEQUENCE: {
+        if (request_len < 2U) {
+            return 0U;
+        }
+        uint32_t bit_count = request[1];
+        if (bit_count == 0U) {
+            bit_count = 256U;
+        }
+        return 2U + ((bit_count + 7U) / 8U);
+    }
+    case ID_DAP_SWD_SEQUENCE: {
+        if (request_len < 2U) {
+            return 0U;
+        }
+        const uint8_t sequence_count = request[1];
+        size_t offset = 2U;
+        for (uint8_t i = 0; i < sequence_count; ++i) {
+            if (offset >= request_len) {
+                return 0U;
+            }
+            const uint8_t info = request[offset++];
+            uint32_t bit_count = info & 0x3FU;
+            if (bit_count == 0U) {
+                bit_count = 64U;
+            }
+            const size_t byte_count = (bit_count + 7U) / 8U;
+            if ((info & 0x80U) == 0U) {
+                offset += byte_count;
+            }
+        }
+        return offset;
+    }
+    case ID_DAP_TRANSFER: {
+        if (request_len < 3U) {
+            return 0U;
+        }
+        const uint8_t request_count = request[2];
+        size_t offset = 3U;
+        for (uint8_t i = 0; i < request_count; ++i) {
+            if (offset >= request_len) {
+                return 0U;
+            }
+            const uint8_t request_value = request[offset++];
+            if ((request_value & DAP_TRANSFER_RNW) != 0U) {
+                if ((request_value & DAP_TRANSFER_MATCH_VALUE) != 0U) {
+                    offset += sizeof(uint32_t);
+                }
+            } else {
+                offset += sizeof(uint32_t);
+            }
+        }
+        return offset;
+    }
+    case ID_DAP_TRANSFER_BLOCK: {
+        if (request_len < 5U) {
+            return 0U;
+        }
+        const uint16_t request_count = (uint16_t)request[2] | ((uint16_t)request[3] << 8);
+        const bool read = (request[4] & DAP_TRANSFER_RNW) != 0U;
+        return read ? 5U : (size_t)(5U + ((size_t)request_count * sizeof(uint32_t)));
+    }
+    default:
+        return 1U;
+    }
+}
+
+static size_t dispatch_command(const cmsis_dap_packet_t *request, uint8_t *response)
+{
+    switch (request->data[0]) {
+    case ID_DAP_INFO:
+        return handle_dap_info(request->data, response);
+    case ID_DAP_HOST_STATUS:
+        return handle_dap_host_status(request->data, response);
+    case ID_DAP_CONNECT:
+        return handle_dap_connect(request->data, response);
+    case ID_DAP_DISCONNECT:
+        return handle_dap_disconnect(response);
+    case ID_DAP_SWJ_CLOCK:
+        return handle_dap_swj_clock(request->data, response);
+    case ID_DAP_SWJ_SEQUENCE:
+        return handle_dap_swj_sequence(request->data, response);
+    case ID_DAP_SWD_CONFIGURE:
+        return handle_dap_swd_configure(request->data, response);
+    case ID_DAP_SWD_SEQUENCE:
+        return handle_dap_swd_sequence(request, response);
+    case ID_DAP_TRANSFER_CONFIGURE:
+        return handle_dap_transfer_configure(request->data, response);
+    case ID_DAP_TRANSFER:
+        return handle_dap_transfer(request->data, response);
+    case ID_DAP_TRANSFER_BLOCK:
+        return handle_dap_transfer_block(request->data, response);
+    case ID_DAP_WRITE_ABORT:
+        return handle_dap_write_abort(request->data, response);
+    case ID_DAP_RESET_TARGET:
+        return handle_dap_reset_target(response);
+    case ID_DAP_DELAY:
+        return handle_dap_delay(request->data, response);
+    case ID_DAP_SWJ_PINS:
+        return handle_dap_swj_pins(request->data, response);
+    case ID_DAP_TRANSFER_ABORT:
+        response[1] = DAP_OK;
+        return 2;
+    case ID_DAP_QUEUE_COMMANDS:
+        return handle_dap_queue_commands(response);
+    default:
+        response[0] = 0xFFU;
+        return 1;
+    }
+}
+
+static size_t handle_dap_execute_commands(const cmsis_dap_packet_t *request, uint8_t *response)
+{
+    const uint8_t count = request->data[1];
+    const uint8_t *cursor = &request->data[2];
+    size_t remaining = (request->len > 2U) ? (size_t)(request->len - 2U) : 0U;
+    uint8_t *dst = &response[2];
+
+    response[1] = count;
+
+    for (uint8_t i = 0; i < count; ++i) {
+        const size_t req_len = command_request_length(cursor, remaining);
+        if (req_len == 0U || req_len > remaining) {
+            response[0] = 0xFFU;
+            return 1U;
+        }
+
+        cmsis_dap_packet_t nested = {0};
+        nested.len = (uint16_t)req_len;
+        nested.transport = request->transport;
+        memcpy(nested.data, cursor, req_len);
+
+        uint8_t nested_response[CMSIS_DAP_PACKET_SIZE] = {0};
+        const size_t rsp_len = dispatch_command(&nested, nested_response);
+        if ((size_t)(dst - response) + rsp_len > CMSIS_DAP_PACKET_SIZE) {
+            response[0] = 0xFFU;
+            return 1U;
+        }
+
+        memcpy(dst, nested_response, rsp_len);
+        dst += rsp_len;
+        cursor += req_len;
+        remaining -= req_len;
+    }
+
+    return (size_t)(dst - response);
 }
 
 static const char *dap_cmd_name(uint8_t cmd)
@@ -952,6 +1175,9 @@ static const char *dap_cmd_name(uint8_t cmd)
     case ID_DAP_SWJ_CLOCK:         return "SWJ_CLK";
     case ID_DAP_SWJ_SEQUENCE:      return "SWJ_SEQ";
     case ID_DAP_SWD_CONFIGURE:     return "SWD_CFG";
+    case ID_DAP_SWD_SEQUENCE:      return "SWD_SEQ";
+    case ID_DAP_QUEUE_COMMANDS:    return "QUEUE";
+    case ID_DAP_EXECUTE_COMMANDS:  return "EXEC";
     default:                        return "???";
     }
 }
@@ -967,41 +1193,10 @@ static size_t process_request(const cmsis_dap_packet_t *request, uint8_t *respon
              request->data[1], request->data[2], request->len);
 
     size_t rsp_len = 0;
-    switch (request->data[0]) {
-    case ID_DAP_INFO:
-        rsp_len = handle_dap_info(request->data, response); break;
-    case ID_DAP_HOST_STATUS:
-        rsp_len = handle_dap_host_status(request->data, response); break;
-    case ID_DAP_CONNECT:
-        rsp_len = handle_dap_connect(request->data, response); break;
-    case ID_DAP_DISCONNECT:
-        rsp_len = handle_dap_disconnect(response); break;
-    case ID_DAP_SWJ_CLOCK:
-        rsp_len = handle_dap_swj_clock(request->data, response); break;
-    case ID_DAP_SWJ_SEQUENCE:
-        rsp_len = handle_dap_swj_sequence(request->data, response); break;
-    case ID_DAP_SWD_CONFIGURE:
-        rsp_len = handle_dap_swd_configure(request->data, response); break;
-    case ID_DAP_TRANSFER_CONFIGURE:
-        rsp_len = handle_dap_transfer_configure(request->data, response); break;
-    case ID_DAP_TRANSFER:
-        rsp_len = handle_dap_transfer(request->data, response); break;
-    case ID_DAP_TRANSFER_BLOCK:
-        rsp_len = handle_dap_transfer_block(request->data, response); break;
-    case ID_DAP_WRITE_ABORT:
-        rsp_len = handle_dap_write_abort(request->data, response); break;
-    case ID_DAP_RESET_TARGET:
-        rsp_len = handle_dap_reset_target(response); break;
-    case ID_DAP_DELAY:
-        rsp_len = handle_dap_delay(request->data, response); break;
-    case ID_DAP_SWJ_PINS:
-        rsp_len = handle_dap_swj_pins(request->data, response); break;
-    case ID_DAP_TRANSFER_ABORT:
-        response[1] = DAP_OK;
-        rsp_len = 2; break;
-    default:
-        response[0] = 0xFFU;
-        rsp_len = 1; break;
+    if (request->data[0] == ID_DAP_EXECUTE_COMMANDS) {
+        rsp_len = handle_dap_execute_commands(request, response);
+    } else {
+        rsp_len = dispatch_command(request, response);
     }
 
     ESP_LOGI(TAG, "<< cmd=0x%02x(%s) rsp[1]=0x%02x rsp[2]=0x%02x rsp[3]=0x%02x rsp_len=%u d0=0x%08" PRIx32,
@@ -1024,6 +1219,11 @@ static void cmsis_dap_worker_task(void *arg)
         }
 
         const size_t response_len = process_request(&packet, response);
+        const UBaseType_t stack_hwm = uxTaskGetStackHighWaterMark(NULL);
+        if (!s_state.worker_stack_warning_logged && stack_hwm < CMSIS_DAP_STACK_WARN_HWM_WORDS) {
+            s_state.worker_stack_warning_logged = true;
+            ESP_LOGW(TAG, "cmsis_dap worker stack is running low: hwm=%" PRIu32 " words", (uint32_t)stack_hwm);
+        }
         const uint16_t hid_send_len = (uint16_t)((response_len < CMSIS_DAP_PACKET_SIZE) ? CMSIS_DAP_PACKET_SIZE : response_len);
         const uint16_t bulk_send_len = (uint16_t)response_len;
 
@@ -1176,7 +1376,6 @@ esp_err_t cmsis_dap_usb_init(void)
     ESP_RETURN_ON_ERROR(esp_read_mac(mac, ESP_MAC_WIFI_STA), TAG, "read mac failed");
     snprintf(s_state.serial, sizeof(s_state.serial), "%02X%02X%02X%02X%02X%02X",
              mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-
     s_state.rx_queue = xQueueCreate(CMSIS_DAP_USB_QUEUE_LEN, sizeof(cmsis_dap_packet_t));
     if (s_state.rx_queue == NULL) {
         return ESP_ERR_NO_MEM;
@@ -1194,7 +1393,7 @@ esp_err_t cmsis_dap_usb_init(void)
 
     const BaseType_t ok = xTaskCreate(cmsis_dap_worker_task,
                                       "cmsis_dap_usb",
-                                      6144,
+                                      CMSIS_DAP_WORKER_STACK_SIZE,
                                       NULL,
                                       5,
                                       &s_state.worker_task);
