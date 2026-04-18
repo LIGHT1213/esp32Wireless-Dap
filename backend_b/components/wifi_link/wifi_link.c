@@ -1,6 +1,7 @@
 #include "wifi_link.h"
 
 #include <errno.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -9,8 +10,10 @@
 #include "esp_check.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_netif.h"
 #include "esp_wifi.h"
 #include "lwip/inet.h"
+#include "log_utils.h"
 #include "sdkconfig.h"
 #include "transport_proto.h"
 #include "uart_bridge.h"
@@ -29,6 +32,17 @@ static SemaphoreHandle_t s_socket_lock;
 static struct sockaddr_storage s_peer_addr;
 static socklen_t s_peer_addr_len;
 static bool s_peer_valid;
+static esp_netif_t *s_wifi_netif;
+
+typedef struct {
+    bool present;
+    uint32_t last_seen_ms;
+    uint16_t http_port;
+    char ip[16];
+} frontend_peer_state_t;
+
+static frontend_peer_state_t s_frontend_peer;
+static const uint32_t WDAP_FRONTEND_ONLINE_TIMEOUT_MS = 15000U;
 
 static void close_socket_locked(void)
 {
@@ -42,6 +56,37 @@ static void close_socket_locked(void)
     memset(&s_peer_addr, 0, sizeof(s_peer_addr));
 }
 
+static void update_frontend_peer_locked(const struct sockaddr_storage *peer_addr,
+                                        socklen_t peer_len,
+                                        const wdap_message_t *message)
+{
+    (void)peer_len;
+
+    if (peer_addr == NULL || message == NULL) {
+        return;
+    }
+    if (peer_addr->ss_family != AF_INET) {
+        return;
+    }
+    if (message->payload_len < sizeof(wdap_device_announce_t)) {
+        return;
+    }
+
+    const wdap_device_announce_t *announce = (const wdap_device_announce_t *)message->payload;
+    if (announce->role != WDAP_DEVICE_ROLE_FRONTEND_A) {
+        return;
+    }
+
+    const struct sockaddr_in *addr4 = (const struct sockaddr_in *)peer_addr;
+    if (inet_ntop(AF_INET, &addr4->sin_addr, s_frontend_peer.ip, sizeof(s_frontend_peer.ip)) == NULL) {
+        return;
+    }
+
+    s_frontend_peer.present = true;
+    s_frontend_peer.last_seen_ms = log_utils_uptime_ms();
+    s_frontend_peer.http_port = announce->http_port;
+}
+
 static esp_err_t process_incoming_frame(const uint8_t *rx_data,
                                         size_t rx_len,
                                         uint8_t *tx_data,
@@ -53,6 +98,13 @@ static esp_err_t process_incoming_frame(const uint8_t *rx_data,
 
     if (message.msg_type == WDAP_MSG_STREAM) {
         *tx_len = 0U;
+        if (message.cmd == WDAP_CMD_DEVICE_ANNOUNCE) {
+            if (xSemaphoreTake(s_socket_lock, portMAX_DELAY) == pdTRUE) {
+                update_frontend_peer_locked(&s_peer_addr, s_peer_addr_len, &message);
+                xSemaphoreGive(s_socket_lock);
+            }
+            return ESP_OK;
+        }
         return uart_bridge_handle_message(&message);
     }
 
@@ -151,6 +203,14 @@ static void udp_server_task(void *arg)
                 s_peer_addr = peer_addr;
                 s_peer_addr_len = peer_len;
                 s_peer_valid = true;
+                if (rx_len >= (ssize_t)WDAP_PACKET_OVERHEAD) {
+                    wdap_message_t message = {0};
+                    if (transport_proto_decode(rx_buffer, (size_t)rx_len, &message) == ESP_OK &&
+                        message.msg_type == WDAP_MSG_STREAM &&
+                        message.cmd == WDAP_CMD_DEVICE_ANNOUNCE) {
+                        update_frontend_peer_locked(&peer_addr, peer_len, &message);
+                    }
+                }
                 xSemaphoreGive(s_socket_lock);
             }
 
@@ -198,7 +258,7 @@ esp_err_t wifi_link_init(void)
         return ESP_ERR_NO_MEM;
     }
 
-    esp_netif_create_default_wifi_ap();
+    s_wifi_netif = esp_netif_create_default_wifi_ap();
 
     const wifi_init_config_t init_cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&init_cfg));
@@ -207,7 +267,7 @@ esp_err_t wifi_link_init(void)
     wifi_config_t ap_cfg = {
         .ap = {
             .channel = CONFIG_WDAP_WIFI_CHANNEL,
-            .max_connection = 1,
+            .max_connection = 2,
             .authmode = WIFI_AUTH_WPA2_PSK,
         },
     };
@@ -258,6 +318,48 @@ esp_err_t wifi_link_send_packet(const uint8_t *data, size_t len)
     if (sent != (ssize_t)len) {
         ESP_LOGW(TAG, "async sendto failed: errno=%d", errno);
         return ESP_FAIL;
+    }
+    return ESP_OK;
+}
+
+esp_err_t wifi_link_get_local_ip_string(char *buffer, size_t buffer_size)
+{
+    if (buffer == NULL || buffer_size == 0U) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (s_wifi_netif == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    esp_netif_ip_info_t ip_info = {0};
+    ESP_RETURN_ON_ERROR(esp_netif_get_ip_info(s_wifi_netif, &ip_info), TAG, "get AP ip failed");
+    snprintf(buffer, buffer_size, IPSTR, IP2STR(&ip_info.ip));
+    return ESP_OK;
+}
+
+esp_err_t wifi_link_get_frontend_peer_info(wifi_link_frontend_peer_info_t *info)
+{
+    if (info == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (s_socket_lock == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    memset(info, 0, sizeof(*info));
+    if (xSemaphoreTake(s_socket_lock, portMAX_DELAY) != pdTRUE) {
+        return ESP_ERR_TIMEOUT;
+    }
+
+    info->present = s_frontend_peer.present;
+    info->last_seen_ms = s_frontend_peer.last_seen_ms;
+    info->http_port = s_frontend_peer.http_port;
+    strlcpy(info->ip, s_frontend_peer.ip, sizeof(info->ip));
+    xSemaphoreGive(s_socket_lock);
+
+    if (info->present) {
+        const uint32_t age_ms = log_utils_uptime_ms() - info->last_seen_ms;
+        info->online = age_ms <= WDAP_FRONTEND_ONLINE_TIMEOUT_MS;
     }
     return ESP_OK;
 }

@@ -42,6 +42,7 @@ typedef enum {
     WDAP_CMD_SWD_SEQUENCE = 0x20,
     WDAP_CMD_UART_DATA = 0x30,
     WDAP_CMD_UART_CONFIG = 0x31,
+    WDAP_CMD_DEVICE_ANNOUNCE = 0x32,
 } wdap_cmd_t;
 
 typedef enum {
@@ -194,6 +195,19 @@ typedef struct {
     uint8_t rts;
     uint8_t reserved[2];
 } wdap_uart_config_t;
+
+typedef enum {
+    WDAP_DEVICE_ROLE_UNKNOWN = 0,
+    WDAP_DEVICE_ROLE_FRONTEND_A = 1,
+    WDAP_DEVICE_ROLE_BACKEND_B = 2,
+} wdap_device_role_t;
+
+typedef struct {
+    uint8_t role;
+    uint8_t reserved0[3];
+    uint16_t http_port;
+    uint16_t reserved1;
+} wdap_device_announce_t;
 
 const char *wdap_cmd_to_string(uint8_t cmd);
 const char *wdap_status_to_string(uint8_t status);

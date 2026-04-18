@@ -10,6 +10,7 @@
 #include "log_utils.h"
 #include "sdkconfig.h"
 #include "transport_proto.h"
+#include "wdap_runtime.h"
 #include "wifi_link.h"
 
 static const char *TAG = "session_mgr";
@@ -104,6 +105,9 @@ esp_err_t session_mgr_send_command(uint8_t cmd,
 {
     if (payload_len > WDAP_MAX_PAYLOAD || response == NULL) {
         return ESP_ERR_INVALID_ARG;
+    }
+    if (wdap_runtime_is_busy()) {
+        return ESP_ERR_INVALID_STATE;
     }
 
     if (!wifi_link_is_ready()) {

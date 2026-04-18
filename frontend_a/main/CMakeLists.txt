@@ -10,5 +10,7 @@ idf_component_register(
         dap_frontend
         cmsis_dap_usb
         usb_uart_bridge
+        ota_service
+        wdap_runtime
         wdap_common
 )

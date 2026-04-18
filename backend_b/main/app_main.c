@@ -7,6 +7,8 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "nvs_flash.h"
+#include "ota_service.h"
+#include "wdap_runtime.h"
 
 static const char *TAG = "backend_main";
 
@@ -22,7 +24,9 @@ static esp_err_t init_nvs(void)
 
 void app_main(void)
 {
+    ESP_ERROR_CHECK(wdap_runtime_init("backend_b"));
     ESP_ERROR_CHECK(init_nvs());
+    ESP_ERROR_CHECK(wdap_runtime_mark_running_partition_valid());
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
@@ -37,6 +41,7 @@ void app_main(void)
     ESP_ERROR_CHECK(swd_engine_init());
     ESP_ERROR_CHECK(uart_bridge_init());
     ESP_ERROR_CHECK(wifi_link_init());
+    ESP_ERROR_CHECK(ota_service_init());
 
-    ESP_LOGI(TAG, "backend B ready, waiting for frontend requests and UART bridge traffic");
+    ESP_LOGI(TAG, "backend B ready, waiting for frontend requests, UART bridge traffic, and HTTP OTA clients");
 }

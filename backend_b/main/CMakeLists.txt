@@ -9,4 +9,6 @@ idf_component_register(
         swd_engine
         board_support
         uart_bridge
+        ota_service
+        wdap_runtime
 )

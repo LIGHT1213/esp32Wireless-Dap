@@ -9,6 +9,7 @@
 #include "freertos/task.h"
 #include "tinyusb_cdc_acm.h"
 #include "transport_proto.h"
+#include "wdap_runtime.h"
 #include "wifi_link.h"
 
 static const char *TAG = "usb_uart_bridge";
@@ -93,6 +94,10 @@ static esp_err_t encode_stream_message(uint8_t cmd,
 static void queue_config_to_peer(void)
 {
     if (s_state.peer_tx_queue == NULL) {
+        return;
+    }
+    if (wdap_runtime_is_busy()) {
+        ESP_LOGW(TAG, "drop USB CDC RX because OTA is active");
         return;
     }
 
@@ -311,6 +316,9 @@ esp_err_t usb_uart_bridge_handle_message(const wdap_message_t *message)
 
     switch (message->cmd) {
     case WDAP_CMD_UART_DATA:
+        if (wdap_runtime_is_busy()) {
+            return ESP_ERR_INVALID_STATE;
+        }
         for (uint16_t offset = 0; offset < message->payload_len; offset += USB_UART_BRIDGE_MAX_CHUNK) {
             const uint16_t chunk_len = (uint16_t)((message->payload_len - offset) > USB_UART_BRIDGE_MAX_CHUNK
                                                       ? USB_UART_BRIDGE_MAX_CHUNK

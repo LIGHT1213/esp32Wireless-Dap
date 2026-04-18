@@ -10,6 +10,8 @@
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "nvs_flash.h"
+#include "ota_service.h"
+#include "wdap_runtime.h"
 
 static const char *TAG = "frontend_main";
 
@@ -50,7 +52,9 @@ static void frontend_wifi_rx_router(const uint8_t *data, size_t len, void *ctx)
 
 void app_main(void)
 {
+    ESP_ERROR_CHECK(wdap_runtime_init("frontend_a"));
     ESP_ERROR_CHECK(init_nvs());
+    ESP_ERROR_CHECK(wdap_runtime_mark_running_partition_valid());
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
@@ -66,7 +70,8 @@ void app_main(void)
     ESP_ERROR_CHECK(dap_frontend_init());
     ESP_ERROR_CHECK(cmsis_dap_usb_init());
     ESP_ERROR_CHECK(usb_uart_bridge_init());
+    ESP_ERROR_CHECK(ota_service_init());
     ESP_ERROR_CHECK(host_link_start(dap_frontend_handle_host_line, NULL));
 
-    ESP_LOGI(TAG, "frontend A ready, commands are accepted via console, native USB CMSIS-DAP, and USB CDC bridge");
+    ESP_LOGI(TAG, "frontend A ready, commands are accepted via console, native USB CMSIS-DAP, USB CDC bridge, and HTTP OTA");
 }

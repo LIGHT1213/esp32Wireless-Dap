@@ -10,6 +10,7 @@
 #include "freertos/task.h"
 #include "sdkconfig.h"
 #include "transport_proto.h"
+#include "wdap_runtime.h"
 
 static const char *TAG = "uart_bridge";
 
@@ -176,6 +177,9 @@ static void uart_bridge_rx_task(void *arg)
         if (rx_len <= 0) {
             continue;
         }
+        if (wdap_runtime_is_busy()) {
+            continue;
+        }
 
         if (send_uart_stream(buffer, (uint16_t)rx_len) != ESP_OK) {
             ESP_LOGW(TAG, "drop UART RX chunk len=%d because frontend link is not ready", rx_len);
@@ -237,6 +241,9 @@ esp_err_t uart_bridge_handle_message(const wdap_message_t *message)
 
     switch (message->cmd) {
     case WDAP_CMD_UART_DATA: {
+        if (wdap_runtime_is_busy()) {
+            return ESP_ERR_INVALID_STATE;
+        }
         if (message->payload_len == 0U) {
             return ESP_OK;
         }
@@ -246,6 +253,9 @@ esp_err_t uart_bridge_handle_message(const wdap_message_t *message)
         return (written == (int)message->payload_len) ? ESP_OK : ESP_FAIL;
     }
     case WDAP_CMD_UART_CONFIG:
+        if (wdap_runtime_is_busy()) {
+            return ESP_ERR_INVALID_STATE;
+        }
         if (message->payload_len < sizeof(wdap_uart_config_t)) {
             return ESP_ERR_INVALID_ARG;
         }

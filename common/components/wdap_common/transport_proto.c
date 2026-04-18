@@ -189,6 +189,8 @@ const char *wdap_cmd_to_string(uint8_t cmd)
         return "UART_DATA";
     case WDAP_CMD_UART_CONFIG:
         return "UART_CONFIG";
+    case WDAP_CMD_DEVICE_ANNOUNCE:
+        return "DEVICE_ANNOUNCE";
     default:
         return "UNKNOWN";
     }

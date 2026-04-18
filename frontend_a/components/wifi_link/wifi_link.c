@@ -1,6 +1,7 @@
 #include "wifi_link.h"
 
 #include <errno.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -9,9 +10,12 @@
 
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_netif.h"
 #include "esp_wifi.h"
 #include "lwip/inet.h"
+#include "log_utils.h"
 #include "sdkconfig.h"
+#include "transport_proto.h"
 #include "wdap_protocol.h"
 
 #include "freertos/FreeRTOS.h"
@@ -23,13 +27,45 @@ static const char *TAG = "wifi_link_a";
 static EventGroupHandle_t s_event_group;
 static int s_socket = -1;
 static TaskHandle_t s_rx_task_handle;
+static TaskHandle_t s_announce_task_handle;
 static wifi_link_rx_cb_t s_callback;
 static void *s_callback_ctx;
 static SemaphoreHandle_t s_socket_lock;
+static esp_netif_t *s_wifi_netif;
 
 static const int WIFI_CONNECTED_BIT = BIT0;
 static const int WDAP_SOCKET_BUFFER_BYTES = (int)(WDAP_MAX_FRAME_SIZE * 8U);
 static const BaseType_t WDAP_NET_CORE_ID = 0;
+static const uint32_t WDAP_ANNOUNCE_INTERVAL_MS = 5000U;
+
+static esp_err_t send_device_announce(void)
+{
+    uint8_t encoded[WDAP_MAX_FRAME_SIZE];
+    size_t encoded_size = 0U;
+    const wdap_device_announce_t announce = {
+        .role = WDAP_DEVICE_ROLE_FRONTEND_A,
+        .reserved0 = {0, 0, 0},
+        .http_port = 80U,
+        .reserved1 = 0U,
+    };
+    const wdap_message_t message = {
+        .msg_type = WDAP_MSG_STREAM,
+        .cmd = WDAP_CMD_DEVICE_ANNOUNCE,
+        .status = WDAP_STATUS_OK,
+        .ack = WDAP_ACK_NONE,
+        .seq = (uint16_t)(log_utils_uptime_ms() & 0xFFFFU),
+        .payload_len = sizeof(announce),
+    };
+    wdap_message_t frame = message;
+
+    memcpy(frame.payload, &announce, sizeof(announce));
+    const esp_err_t err = transport_proto_encode(&frame, encoded, sizeof(encoded), &encoded_size);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "encode device announce failed: %s", esp_err_to_name(err));
+        return err;
+    }
+    return wifi_link_send_packet(encoded, encoded_size);
+}
 
 static void close_socket(void)
 {
@@ -139,6 +175,24 @@ static void rx_task(void *arg)
     }
 }
 
+static void announce_task(void *arg)
+{
+    (void)arg;
+
+    while (true) {
+        if (wifi_link_is_ready()) {
+            const esp_err_t err = send_device_announce();
+            if (err != ESP_OK) {
+                ESP_LOGW(TAG, "device announce failed: %s", esp_err_to_name(err));
+            }
+            vTaskDelay(pdMS_TO_TICKS(WDAP_ANNOUNCE_INTERVAL_MS));
+            continue;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
 static void wifi_event_handler(void *arg,
                                esp_event_base_t event_base,
                                int32_t event_id,
@@ -180,7 +234,7 @@ esp_err_t wifi_link_init(wifi_link_rx_cb_t callback, void *ctx)
     s_callback = callback;
     s_callback_ctx = ctx;
 
-    esp_netif_create_default_wifi_sta();
+    s_wifi_netif = esp_netif_create_default_wifi_sta();
 
     const wifi_init_config_t init_cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&init_cfg));
@@ -214,6 +268,17 @@ esp_err_t wifi_link_init(wifi_link_rx_cb_t callback, void *ctx)
                                                   &s_rx_task_handle,
                                                   WDAP_NET_CORE_ID);
     if (ok != pdPASS) {
+        return ESP_FAIL;
+    }
+
+    const BaseType_t announce_ok = xTaskCreatePinnedToCore(announce_task,
+                                                           "wifi_announce_a",
+                                                           3072,
+                                                           NULL,
+                                                           4,
+                                                           &s_announce_task_handle,
+                                                           WDAP_NET_CORE_ID);
+    if (announce_ok != pdPASS) {
         return ESP_FAIL;
     }
 
@@ -252,5 +317,24 @@ esp_err_t wifi_link_send_packet(const uint8_t *data, size_t len)
         return ESP_FAIL;
     }
 
+    return ESP_OK;
+}
+
+esp_err_t wifi_link_get_local_ip_string(char *buffer, size_t buffer_size)
+{
+    if (buffer == NULL || buffer_size == 0U) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (s_wifi_netif == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    esp_netif_ip_info_t ip_info = {0};
+    const esp_err_t err = esp_netif_get_ip_info(s_wifi_netif, &ip_info);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "get ip info failed: %s", esp_err_to_name(err));
+        return err;
+    }
+    snprintf(buffer, buffer_size, IPSTR, IP2STR(&ip_info.ip));
     return ESP_OK;
 }

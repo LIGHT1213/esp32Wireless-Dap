@@ -9,6 +9,7 @@
 #include "log_utils.h"
 #include "swd_engine.h"
 #include "transport_proto.h"
+#include "wdap_runtime.h"
 
 static const char *TAG = "dap_backend";
 
@@ -651,6 +652,13 @@ done:
 
 static esp_err_t handle_request(const wdap_message_t *request, wdap_message_t *response)
 {
+    if (wdap_runtime_is_busy() &&
+        request->cmd != WDAP_CMD_PING &&
+        request->cmd != WDAP_CMD_GET_VERSION &&
+        request->cmd != WDAP_CMD_GET_CAPS) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
     switch (request->cmd) {
     case WDAP_CMD_PING:
         return handle_ping(request, response);
