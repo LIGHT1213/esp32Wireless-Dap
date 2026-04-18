@@ -669,7 +669,7 @@ esp_err_t swd_engine_read_dp(uint8_t addr, uint32_t *value, uint8_t *ack)
         *ack = phy_ack;
     }
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "dp read addr=0x%02x value=0x%08" PRIx32 " ack=0x%02x", addr, *value, phy_ack);
+        ESP_LOGD(TAG, "dp read addr=0x%02x value=0x%08" PRIx32 " ack=0x%02x", addr, *value, phy_ack);
     }
     if (err == ESP_OK) {
         ESP_RETURN_ON_ERROR(apply_idle_cycles(), TAG, "idle cycles after dp read failed");
@@ -704,7 +704,7 @@ esp_err_t swd_engine_write_dp(uint8_t addr, uint32_t value, uint8_t *ack)
         }
     }
     if (err == ESP_OK) {
-        ESP_LOGI(TAG, "dp write addr=0x%02x value=0x%08" PRIx32 " ack=0x%02x", addr, value, phy_ack);
+        ESP_LOGD(TAG, "dp write addr=0x%02x value=0x%08" PRIx32 " ack=0x%02x", addr, value, phy_ack);
     }
     if (err == ESP_OK) {
         ESP_RETURN_ON_ERROR(apply_idle_cycles(), TAG, "idle cycles after dp write failed");
@@ -750,7 +750,7 @@ esp_err_t swd_engine_read_ap(uint8_t addr, uint32_t *value, uint8_t *ack)
 
     *value = result;
     memap_record_access("read", addr, result);
-    ESP_LOGI(TAG, "ap read addr=0x%02x result=0x%08" PRIx32 " dp_ack=0x%02x", addr, result, dp_ack);
+    ESP_LOGD(TAG, "ap read addr=0x%02x result=0x%08" PRIx32 " dp_ack=0x%02x", addr, result, dp_ack);
     ESP_RETURN_ON_ERROR(apply_idle_cycles(), TAG, "idle cycles after ap read failed");
     return ESP_OK;
 }
@@ -776,7 +776,7 @@ esp_err_t swd_engine_write_ap(uint8_t addr, uint32_t value, uint8_t *ack)
     }
 
     memap_record_access("write", addr, value);
-    ESP_LOGI(TAG, "ap write addr=0x%02x value=0x%08" PRIx32 " ap_ack=0x%02x", addr, value, ap_ack);
+    ESP_LOGD(TAG, "ap write addr=0x%02x value=0x%08" PRIx32 " ap_ack=0x%02x", addr, value, ap_ack);
     ESP_RETURN_ON_ERROR(apply_idle_cycles(), TAG, "idle cycles after ap write failed");
     return ESP_OK;
 }

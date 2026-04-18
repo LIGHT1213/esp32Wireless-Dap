@@ -5,9 +5,11 @@
 #include <string.h>
 
 #include "driver/gpio.h"
+#include "esp_attr.h"
 #include "esp_cpu.h"
 #include "esp_log.h"
 #include "esp_rom_sys.h"
+#include "hal/gpio_ll.h"
 #include "sdkconfig.h"
 #include "wdap_protocol.h"
 
@@ -21,10 +23,12 @@ typedef struct {
     uint32_t half_period_cycles;
     uint8_t turnaround_cycles;
     bool data_phase;
+    bool swdio_output_enabled;
     bool initialized;
 } swd_phy_state_t;
 
 static swd_phy_state_t s_state;
+static gpio_dev_t *const s_gpio_hw = GPIO_LL_GET_HW(0);
 
 static const char *ack_to_string(uint8_t ack)
 {
@@ -72,7 +76,7 @@ static void log_request_bits(const char *op, uint8_t request, uint8_t addr)
 
 static void log_invalid_ack(const char *op, uint8_t request, uint8_t ack)
 {
-    const int line_level = gpio_get_level((gpio_num_t)s_state.swdio_gpio);
+    const int line_level = gpio_ll_get_level(s_gpio_hw, (uint32_t)s_state.swdio_gpio);
     ESP_LOGW(TAG,
              "%s invalid ack req=0x%02x ack=0x%02x(%s) bits=%u%u%u swdio_level=%d hz=%" PRIu32,
              op,
@@ -95,7 +99,17 @@ static uint8_t parity32(uint32_t value)
     return (uint8_t)((0x6996U >> value) & 1U);
 }
 
-static void delay_half_period(void)
+static inline void IRAM_ATTR swclk_set_level(uint32_t level)
+{
+    gpio_ll_set_level(s_gpio_hw, (uint32_t)s_state.swclk_gpio, level);
+}
+
+static inline void IRAM_ATTR swdio_set_level(uint32_t level)
+{
+    gpio_ll_set_level(s_gpio_hw, (uint32_t)s_state.swdio_gpio, level);
+}
+
+static void IRAM_ATTR delay_half_period(void)
 {
     if (s_state.half_period_cycles > 0U) {
         const uint32_t start = esp_cpu_get_cycle_count();
@@ -107,49 +121,55 @@ static void delay_half_period(void)
     esp_rom_delay_us(s_state.half_period_us);
 }
 
-static void set_swdio_output(int level)
+static inline void IRAM_ATTR set_swdio_output(int level)
 {
-    gpio_set_direction((gpio_num_t)s_state.swdio_gpio, GPIO_MODE_OUTPUT);
-    gpio_set_level((gpio_num_t)s_state.swdio_gpio, level);
+    if (!s_state.swdio_output_enabled) {
+        gpio_ll_output_enable(s_gpio_hw, (uint32_t)s_state.swdio_gpio);
+        s_state.swdio_output_enabled = true;
+    }
+    swdio_set_level(level ? 1U : 0U);
 }
 
-static void set_swdio_input(void)
+static inline void IRAM_ATTR set_swdio_input(void)
 {
-    gpio_set_direction((gpio_num_t)s_state.swdio_gpio, GPIO_MODE_INPUT);
+    if (s_state.swdio_output_enabled) {
+        gpio_ll_output_disable(s_gpio_hw, (uint32_t)s_state.swdio_gpio);
+        s_state.swdio_output_enabled = false;
+    }
 }
 
-static void clock_cycle(void)
+static inline void IRAM_ATTR clock_cycle(void)
 {
-    gpio_set_level((gpio_num_t)s_state.swclk_gpio, 0);
+    swclk_set_level(0U);
     delay_half_period();
-    gpio_set_level((gpio_num_t)s_state.swclk_gpio, 1);
+    swclk_set_level(1U);
     delay_half_period();
 }
 
-static void write_bit(uint8_t bit)
+static inline void IRAM_ATTR write_bit(uint8_t bit)
 {
-    gpio_set_level((gpio_num_t)s_state.swdio_gpio, bit ? 1 : 0);
+    swdio_set_level(bit ? 1U : 0U);
     clock_cycle();
 }
 
-static uint8_t read_bit(void)
+static inline uint8_t IRAM_ATTR read_bit(void)
 {
-    gpio_set_level((gpio_num_t)s_state.swclk_gpio, 0);
+    swclk_set_level(0U);
     delay_half_period();
-    const uint8_t value = (uint8_t)gpio_get_level((gpio_num_t)s_state.swdio_gpio);
-    gpio_set_level((gpio_num_t)s_state.swclk_gpio, 1);
+    const uint8_t value = (uint8_t)gpio_ll_get_level(s_gpio_hw, (uint32_t)s_state.swdio_gpio);
+    swclk_set_level(1U);
     delay_half_period();
     return value;
 }
 
-static void write_bits(uint32_t value, uint8_t count)
+static inline void IRAM_ATTR write_bits(uint32_t value, uint8_t count)
 {
     for (uint8_t i = 0; i < count; ++i) {
         write_bit((uint8_t)((value >> i) & 1U));
     }
 }
 
-static uint32_t read_bits(uint8_t count)
+static inline uint32_t IRAM_ATTR read_bits(uint8_t count)
 {
     uint32_t value = 0;
     for (uint8_t i = 0; i < count; ++i) {
@@ -158,7 +178,7 @@ static uint32_t read_bits(uint8_t count)
     return value;
 }
 
-static void turnaround_to_read(void)
+static inline void IRAM_ATTR turnaround_to_read(void)
 {
     set_swdio_input();
     for (uint8_t i = 0; i < s_state.turnaround_cycles; ++i) {
@@ -166,7 +186,7 @@ static void turnaround_to_read(void)
     }
 }
 
-static void turnaround_to_write(void)
+static inline void IRAM_ATTR turnaround_to_write(void)
 {
     for (uint8_t i = 0; i < s_state.turnaround_cycles; ++i) {
         clock_cycle();
@@ -174,7 +194,7 @@ static void turnaround_to_write(void)
     set_swdio_output(1);
 }
 
-static void backoff_after_ack(bool read_request, uint8_t ack)
+static void IRAM_ATTR backoff_after_ack(bool read_request, uint8_t ack)
 {
     if (ack == WDAP_ACK_WAIT || ack == WDAP_ACK_FAULT) {
         if (s_state.data_phase && read_request) {
@@ -184,12 +204,12 @@ static void backoff_after_ack(bool read_request, uint8_t ack)
         }
         turnaround_to_write();
         if (s_state.data_phase && !read_request) {
-            gpio_set_level((gpio_num_t)s_state.swdio_gpio, 0);
+            swdio_set_level(0U);
             for (uint32_t i = 0; i < 33U; ++i) {
                 clock_cycle();
             }
         }
-        gpio_set_level((gpio_num_t)s_state.swdio_gpio, 1);
+        swdio_set_level(1U);
         return;
     }
 
@@ -200,7 +220,7 @@ static void backoff_after_ack(bool read_request, uint8_t ack)
     set_swdio_output(1);
 }
 
-static uint8_t make_request(bool apndp, bool rnw, uint8_t addr)
+static inline uint8_t IRAM_ATTR make_request(bool apndp, bool rnw, uint8_t addr)
 {
     const uint8_t a2 = (uint8_t)((addr >> 2) & 0x1U);
     const uint8_t a3 = (uint8_t)((addr >> 3) & 0x1U);
@@ -214,7 +234,7 @@ static uint8_t make_request(bool apndp, bool rnw, uint8_t addr)
                      (parity << 5));
 }
 
-static esp_err_t read_register(bool apndp, uint8_t addr, uint32_t *value, uint8_t *ack)
+static esp_err_t IRAM_ATTR read_register(bool apndp, uint8_t addr, uint32_t *value, uint8_t *ack)
 {
     if (value == NULL || ack == NULL) {
         return ESP_ERR_INVALID_ARG;
@@ -243,11 +263,11 @@ static esp_err_t read_register(bool apndp, uint8_t addr, uint32_t *value, uint8_
     }
 
     *value = data;
-    gpio_set_level((gpio_num_t)s_state.swdio_gpio, 1);
+    swdio_set_level(1U);
     return ESP_OK;
 }
 
-static esp_err_t write_register(bool apndp, uint8_t addr, uint32_t value, uint8_t *ack)
+static esp_err_t IRAM_ATTR write_register(bool apndp, uint8_t addr, uint32_t value, uint8_t *ack)
 {
     if (ack == NULL) {
         return ESP_ERR_INVALID_ARG;
@@ -269,7 +289,7 @@ static esp_err_t write_register(bool apndp, uint8_t addr, uint32_t value, uint8_
     turnaround_to_write();
     write_bits(value, 32);
     write_bit(parity32(value));
-    gpio_set_level((gpio_num_t)s_state.swdio_gpio, 1);
+    swdio_set_level(1U);
     return ESP_OK;
 }
 
@@ -300,8 +320,15 @@ esp_err_t swd_phy_init(const swd_phy_config_t *config)
 
     ESP_ERROR_CHECK(gpio_config(&swclk_cfg));
     ESP_ERROR_CHECK(gpio_config(&swdio_cfg));
-    ESP_ERROR_CHECK(gpio_set_level((gpio_num_t)s_state.swclk_gpio, 1));
-    ESP_ERROR_CHECK(gpio_set_level((gpio_num_t)s_state.swdio_gpio, 1));
+    gpio_ll_input_enable(s_gpio_hw, (uint32_t)s_state.swclk_gpio);
+    gpio_ll_input_enable(s_gpio_hw, (uint32_t)s_state.swdio_gpio);
+    gpio_ll_output_enable(s_gpio_hw, (uint32_t)s_state.swclk_gpio);
+    gpio_ll_output_enable(s_gpio_hw, (uint32_t)s_state.swdio_gpio);
+    gpio_ll_od_disable(s_gpio_hw, (uint32_t)s_state.swclk_gpio);
+    gpio_ll_od_disable(s_gpio_hw, (uint32_t)s_state.swdio_gpio);
+    swclk_set_level(1U);
+    swdio_set_level(1U);
+    s_state.swdio_output_enabled = true;
 
     ESP_ERROR_CHECK(swd_phy_set_clock(config->clock_hz));
     ESP_ERROR_CHECK(swd_phy_set_transfer_config(1, 0));
@@ -343,7 +370,7 @@ esp_err_t swd_phy_set_transfer_config(uint8_t turnaround, uint8_t data_phase)
     return ESP_OK;
 }
 
-esp_err_t swd_phy_write_idle_bits(uint8_t bit, uint32_t count)
+esp_err_t IRAM_ATTR swd_phy_write_idle_bits(uint8_t bit, uint32_t count)
 {
     if (!s_state.initialized) {
         return ESP_ERR_INVALID_STATE;
@@ -353,19 +380,18 @@ esp_err_t swd_phy_write_idle_bits(uint8_t bit, uint32_t count)
     for (uint32_t i = 0; i < count; ++i) {
         clock_cycle();
     }
-    gpio_set_level((gpio_num_t)s_state.swdio_gpio, 1);
+    swdio_set_level(1U);
     return ESP_OK;
 }
 
-esp_err_t swd_phy_drive_pins(uint8_t value, uint8_t select)
+esp_err_t IRAM_ATTR swd_phy_drive_pins(uint8_t value, uint8_t select)
 {
     if (!s_state.initialized) {
         return ESP_ERR_INVALID_STATE;
     }
 
     if ((select & WDAP_SWJ_PIN_SWCLK_TCK) != 0U) {
-        gpio_set_level((gpio_num_t)s_state.swclk_gpio,
-                       (value & WDAP_SWJ_PIN_SWCLK_TCK) != 0U ? 1 : 0);
+        swclk_set_level((value & WDAP_SWJ_PIN_SWCLK_TCK) != 0U ? 1U : 0U);
     }
 
     if ((select & WDAP_SWJ_PIN_SWDIO_TMS) != 0U) {
@@ -375,17 +401,17 @@ esp_err_t swd_phy_drive_pins(uint8_t value, uint8_t select)
     return ESP_OK;
 }
 
-esp_err_t swd_phy_read_pins(uint8_t *pins)
+esp_err_t IRAM_ATTR swd_phy_read_pins(uint8_t *pins)
 {
     if (!s_state.initialized || pins == NULL) {
         return ESP_ERR_INVALID_ARG;
     }
 
     uint8_t value = 0;
-    if (gpio_get_level((gpio_num_t)s_state.swclk_gpio) != 0) {
+    if (gpio_ll_get_level(s_gpio_hw, (uint32_t)s_state.swclk_gpio) != 0) {
         value |= WDAP_SWJ_PIN_SWCLK_TCK;
     }
-    if (gpio_get_level((gpio_num_t)s_state.swdio_gpio) != 0) {
+    if (gpio_ll_get_level(s_gpio_hw, (uint32_t)s_state.swdio_gpio) != 0) {
         value |= WDAP_SWJ_PIN_SWDIO_TMS;
     }
 
@@ -393,7 +419,7 @@ esp_err_t swd_phy_read_pins(uint8_t *pins)
     return ESP_OK;
 }
 
-esp_err_t swd_phy_swd_sequence(uint32_t info, const uint8_t *swdo, uint8_t *swdi)
+esp_err_t IRAM_ATTR swd_phy_swd_sequence(uint32_t info, const uint8_t *swdo, uint8_t *swdi)
 {
     if (!s_state.initialized) {
         return ESP_ERR_INVALID_STATE;
@@ -428,11 +454,11 @@ esp_err_t swd_phy_swd_sequence(uint32_t info, const uint8_t *swdo, uint8_t *swdi
         }
     }
 
-    gpio_set_level((gpio_num_t)s_state.swdio_gpio, 1);
+    swdio_set_level(1U);
     return ESP_OK;
 }
 
-esp_err_t swd_phy_swj_sequence(uint32_t count, const uint8_t *data)
+esp_err_t IRAM_ATTR swd_phy_swj_sequence(uint32_t count, const uint8_t *data)
 {
     if (!s_state.initialized) {
         return ESP_ERR_INVALID_STATE;
@@ -445,14 +471,14 @@ esp_err_t swd_phy_swj_sequence(uint32_t count, const uint8_t *data)
     for (uint32_t i = 0; i < count; ++i) {
         const uint8_t byte_val = data[i / 8U];
         const uint8_t bit_val = (byte_val >> (i % 8U)) & 1U;
-        gpio_set_level((gpio_num_t)s_state.swdio_gpio, bit_val);
+        swdio_set_level(bit_val);
         clock_cycle();
     }
-    gpio_set_level((gpio_num_t)s_state.swdio_gpio, 1);
+    swdio_set_level(1U);
     return ESP_OK;
 }
 
-esp_err_t swd_phy_line_reset(void)
+esp_err_t IRAM_ATTR swd_phy_line_reset(void)
 {
     if (!s_state.initialized) {
         return ESP_ERR_INVALID_STATE;
@@ -465,7 +491,7 @@ esp_err_t swd_phy_line_reset(void)
     return ESP_OK;
 }
 
-esp_err_t swd_phy_jtag_to_swd(void)
+esp_err_t IRAM_ATTR swd_phy_jtag_to_swd(void)
 {
     if (!s_state.initialized) {
         return ESP_ERR_INVALID_STATE;
@@ -473,26 +499,26 @@ esp_err_t swd_phy_jtag_to_swd(void)
 
     set_swdio_output(1);
     write_bits(0xe79eU, 16);
-    gpio_set_level((gpio_num_t)s_state.swdio_gpio, 1);
+    swdio_set_level(1U);
     return ESP_OK;
 }
 
-esp_err_t swd_phy_read_dp(uint8_t addr, uint32_t *value, uint8_t *ack)
+esp_err_t IRAM_ATTR swd_phy_read_dp(uint8_t addr, uint32_t *value, uint8_t *ack)
 {
     return read_register(false, addr, value, ack);
 }
 
-esp_err_t swd_phy_write_dp(uint8_t addr, uint32_t value, uint8_t *ack)
+esp_err_t IRAM_ATTR swd_phy_write_dp(uint8_t addr, uint32_t value, uint8_t *ack)
 {
     return write_register(false, addr, value, ack);
 }
 
-esp_err_t swd_phy_read_ap(uint8_t addr, uint32_t *value, uint8_t *ack)
+esp_err_t IRAM_ATTR swd_phy_read_ap(uint8_t addr, uint32_t *value, uint8_t *ack)
 {
     return read_register(true, addr, value, ack);
 }
 
-esp_err_t swd_phy_write_ap(uint8_t addr, uint32_t value, uint8_t *ack)
+esp_err_t IRAM_ATTR swd_phy_write_ap(uint8_t addr, uint32_t value, uint8_t *ack)
 {
     return write_register(true, addr, value, ack);
 }

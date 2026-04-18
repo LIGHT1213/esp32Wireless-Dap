@@ -9,6 +9,7 @@
 #include "freertos/task.h"
 
 static const char *TAG = "host_link";
+static const BaseType_t HOST_LINK_CORE_ID = 1;
 
 static host_link_line_cb_t s_callback;
 static void *s_callback_ctx;
@@ -55,11 +56,12 @@ esp_err_t host_link_start(host_link_line_cb_t callback, void *ctx)
     s_callback = callback;
     s_callback_ctx = ctx;
 
-    const BaseType_t ok = xTaskCreate(host_link_task,
-                                      "host_link",
-                                      4096,
-                                      NULL,
-                                      4,
-                                      NULL);
+    const BaseType_t ok = xTaskCreatePinnedToCore(host_link_task,
+                                                  "host_link",
+                                                  4096,
+                                                  NULL,
+                                                  4,
+                                                  NULL,
+                                                  HOST_LINK_CORE_ID);
     return ok == pdPASS ? ESP_OK : ESP_FAIL;
 }

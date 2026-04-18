@@ -27,9 +27,11 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+#if CONFIG_COMPILER_OPTIMIZATION_LEVEL_DEBUG
     esp_log_level_set("cmsis_dap_usb", ESP_LOG_DEBUG);
     esp_log_level_set("session_mgr", ESP_LOG_DEBUG);
     esp_log_level_set("wifi_link_a", ESP_LOG_DEBUG);
+#endif
 
     ESP_ERROR_CHECK(session_mgr_init());
     ESP_ERROR_CHECK(wifi_link_init(session_mgr_handle_incoming, NULL));

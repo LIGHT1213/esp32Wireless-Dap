@@ -26,6 +26,8 @@ static wifi_link_rx_cb_t s_callback;
 static void *s_callback_ctx;
 
 static const int WIFI_CONNECTED_BIT = BIT0;
+static const int WDAP_SOCKET_BUFFER_BYTES = (int)(WDAP_MAX_FRAME_SIZE * 8U);
+static const BaseType_t WDAP_NET_CORE_ID = 0;
 
 static void close_socket(void)
 {
@@ -47,6 +49,9 @@ static esp_err_t ensure_socket(void)
         ESP_LOGE(TAG, "socket create failed: errno=%d", errno);
         return ESP_FAIL;
     }
+
+    (void)setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &WDAP_SOCKET_BUFFER_BYTES, sizeof(WDAP_SOCKET_BUFFER_BYTES));
+    (void)setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &WDAP_SOCKET_BUFFER_BYTES, sizeof(WDAP_SOCKET_BUFFER_BYTES));
 
     struct timeval timeout = {
         .tv_sec = 1,
@@ -165,8 +170,15 @@ esp_err_t wifi_link_init(wifi_link_rx_cb_t callback, void *ctx)
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_cfg));
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
+    ESP_ERROR_CHECK(esp_wifi_set_bandwidth(WIFI_IF_STA, WIFI_BW_HT40));
 
-    const BaseType_t ok = xTaskCreate(rx_task, "wifi_rx_a", 4096, NULL, 5, &s_rx_task_handle);
+    const BaseType_t ok = xTaskCreatePinnedToCore(rx_task,
+                                                  "wifi_rx_a",
+                                                  4096,
+                                                  NULL,
+                                                  5,
+                                                  &s_rx_task_handle,
+                                                  WDAP_NET_CORE_ID);
     if (ok != pdPASS) {
         return ESP_FAIL;
     }

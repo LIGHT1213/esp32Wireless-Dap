@@ -514,6 +514,7 @@ static esp_err_t handle_transfer_sequence(const wdap_message_t *request, wdap_me
     uint8_t ack = WDAP_ACK_OK;
     uint8_t result_flags = DAP_TRANSFER_OK;
     uint32_t match_mask = hdr->match_mask;
+    bool check_write = false;
 
     for (uint8_t i = 0; i < count; ++i) {
         if ((size_t)(end - cursor) < 2U) {
@@ -530,6 +531,7 @@ static esp_err_t handle_transfer_sequence(const wdap_message_t *request, wdap_me
         esp_err_t err = ESP_OK;
 
         if (read) {
+            check_write = false;
             uint32_t value = 0;
             uint32_t match_value = 0;
             if (use_match) {
@@ -595,6 +597,7 @@ static esp_err_t handle_transfer_sequence(const wdap_message_t *request, wdap_me
 
             if (write_match_mask) {
                 match_mask = value;
+                check_write = false;
             } else {
                 if (apndp) {
                     err = execute_write_with_retry(swd_engine_write_ap,
@@ -618,10 +621,24 @@ static esp_err_t handle_transfer_sequence(const wdap_message_t *request, wdap_me
                     result_flags = wdap_ack_to_dap_flags(ack);
                     goto done;
                 }
+                check_write = true;
             }
         }
 
         ++completed;
+    }
+
+    if (result_flags == DAP_TRANSFER_OK && check_write) {
+        uint32_t ignored = 0;
+        uint8_t transfer_ack = WDAP_ACK_OK;
+        const esp_err_t err = swd_engine_read_dp(0x0CU, &ignored, &transfer_ack);
+        if (transfer_ack == WDAP_ACK_NONE) {
+            transfer_ack = WDAP_ACK_FAULT;
+        }
+        ack = transfer_ack;
+        if (err != ESP_OK || ack != WDAP_ACK_OK) {
+            result_flags = wdap_ack_to_dap_flags(ack);
+        }
     }
 
 done:

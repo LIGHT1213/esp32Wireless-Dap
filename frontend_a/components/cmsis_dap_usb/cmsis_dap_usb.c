@@ -22,17 +22,20 @@
 
 static const char *TAG = "cmsis_dap_usb";
 
+#define CMSIS_DAP_HID_REPORT_SIZE 64U
 #define CMSIS_DAP_PACKET_SIZE 64U
 #define CMSIS_DAP_HID_EP_OUT 0x01
 #define CMSIS_DAP_HID_EP_IN 0x81
 #define CMSIS_DAP_VENDOR_EP_OUT 0x02
 #define CMSIS_DAP_VENDOR_EP_IN 0x82
-#define CMSIS_DAP_USB_QUEUE_LEN 32U
+#define CMSIS_DAP_USB_QUEUE_LEN 64U
 #define CMSIS_DAP_VENDOR_REQUEST_MICROSOFT 0x20U
-#define CMSIS_DAP_MAX_SWJ_CLOCK_HZ 1000000U
+#define CMSIS_DAP_USB_EP_SIZE 64U
+#define CMSIS_DAP_MAX_SWJ_CLOCK_HZ 8000000U
 #define CMSIS_DAP_WORKER_STACK_SIZE 8192U
 #define CMSIS_DAP_STACK_WARN_HWM_WORDS 256U
-#define CMSIS_DAP_PACKET_COUNT 4U
+#define CMSIS_DAP_PACKET_COUNT 8U
+#define WDAP_WORK_CORE_ID 1
 
 #define ID_DAP_INFO 0x00U
 #define ID_DAP_HOST_STATUS 0x01U
@@ -147,10 +150,10 @@ static const uint8_t s_hid_report_descriptor[] = {
     0x15, 0x00,
     0x26, 0xFF, 0x00,
     0x75, 0x08,
-    0x95, CMSIS_DAP_PACKET_SIZE,
+    0x95, CMSIS_DAP_HID_REPORT_SIZE,
     0x09, 0x01,
     0x81, 0x02,
-    0x95, CMSIS_DAP_PACKET_SIZE,
+    0x95, CMSIS_DAP_HID_REPORT_SIZE,
     0x09, 0x01,
     0x91, 0x02,
     0xC0,
@@ -187,7 +190,7 @@ static const uint8_t s_configuration_descriptor[] = {
                           CMSIS_DAP_V2_INTERFACE_STRING_INDEX,
                           CMSIS_DAP_VENDOR_EP_OUT,
                           CMSIS_DAP_VENDOR_EP_IN,
-                          CMSIS_DAP_PACKET_SIZE),
+                          CMSIS_DAP_USB_EP_SIZE),
 };
 
 static const uint8_t s_bos_descriptor[] = {
@@ -651,6 +654,33 @@ static void update_transfer_state_after_completed(const uint8_t *request, uint8_
     }
 }
 
+static bool is_safe_batched_transfer_request(const uint8_t *request, uint8_t request_count)
+{
+    const uint8_t *cursor = &request[3];
+
+    for (uint8_t i = 0; i < request_count; ++i) {
+        const uint8_t request_value = *cursor++;
+        const bool apndp = (request_value & DAP_TRANSFER_APNDP) != 0U;
+        const bool read = (request_value & DAP_TRANSFER_RNW) != 0U;
+        const bool has_match_value = (request_value & DAP_TRANSFER_MATCH_VALUE) != 0U;
+        const bool write_match_mask = (!read) && ((request_value & DAP_TRANSFER_MATCH_MASK) != 0U);
+
+        if (read) {
+            if (has_match_value) {
+                cursor += sizeof(uint32_t);
+            }
+            continue;
+        }
+
+        cursor += sizeof(uint32_t);
+        if (apndp && !write_match_mask) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 static bool try_batched_transfer(const uint8_t *request,
                                  uint8_t request_count,
                                  uint8_t *response,
@@ -755,8 +785,8 @@ static size_t handle_dap_transfer(const uint8_t *request, uint8_t *response)
 
     ESP_LOGD(TAG, "DAP_Transfer req_count=%u", request_count);
 
-    if (0 &&  /* disabled: use individual transfers for Keil compat */
-        request_count > 0U &&
+    if (request_count > 1U &&
+        is_safe_batched_transfer_request(request, request_count) &&
         try_batched_transfer(request, request_count, response, &completed, &response_value, &payload)) {
         response[1] = completed;
         response[2] = response_value;
@@ -1188,7 +1218,7 @@ static size_t process_request(const cmsis_dap_packet_t *request, uint8_t *respon
     response[0] = request->data[0];
     const uint8_t cmd_id = request->data[0];
 
-    ESP_LOGI(TAG, ">> cmd=0x%02x(%s) b1=0x%02x b2=0x%02x len=%u",
+    ESP_LOGD(TAG, ">> cmd=0x%02x(%s) b1=0x%02x b2=0x%02x len=%u",
              cmd_id, dap_cmd_name(cmd_id),
              request->data[1], request->data[2], request->len);
 
@@ -1199,7 +1229,7 @@ static size_t process_request(const cmsis_dap_packet_t *request, uint8_t *respon
         rsp_len = dispatch_command(request, response);
     }
 
-    ESP_LOGI(TAG, "<< cmd=0x%02x(%s) rsp[1]=0x%02x rsp[2]=0x%02x rsp[3]=0x%02x rsp_len=%u d0=0x%08" PRIx32,
+    ESP_LOGD(TAG, "<< cmd=0x%02x(%s) rsp[1]=0x%02x rsp[2]=0x%02x rsp[3]=0x%02x rsp_len=%u d0=0x%08" PRIx32,
              cmd_id, dap_cmd_name(cmd_id),
              response[1], response[2], response[3], (unsigned)rsp_len,
              rsp_len >= 7 ? read_u32_le(&response[3]) : (rsp_len >= 4 ? (uint32_t)response[3] : 0UL));
@@ -1224,7 +1254,7 @@ static void cmsis_dap_worker_task(void *arg)
             s_state.worker_stack_warning_logged = true;
             ESP_LOGW(TAG, "cmsis_dap worker stack is running low: hwm=%" PRIu32 " words", (uint32_t)stack_hwm);
         }
-        const uint16_t hid_send_len = (uint16_t)((response_len < CMSIS_DAP_PACKET_SIZE) ? CMSIS_DAP_PACKET_SIZE : response_len);
+        const uint16_t hid_send_len = CMSIS_DAP_HID_REPORT_SIZE;
         const uint16_t bulk_send_len = (uint16_t)response_len;
 
         if (packet.transport == CMSIS_DAP_TRANSPORT_VENDOR) {
@@ -1386,17 +1416,21 @@ esp_err_t cmsis_dap_usb_init(void)
     tusb_cfg.descriptor.full_speed_config = s_configuration_descriptor;
     tusb_cfg.descriptor.string = s_string_descriptor;
     tusb_cfg.descriptor.string_count = sizeof(s_string_descriptor) / sizeof(s_string_descriptor[0]);
+    tusb_cfg.task = TINYUSB_TASK_CUSTOM(TINYUSB_DEFAULT_TASK_SIZE,
+                                        TINYUSB_DEFAULT_TASK_PRIO,
+                                        WDAP_WORK_CORE_ID);
 #if (TUD_OPT_HIGH_SPEED)
     tusb_cfg.descriptor.high_speed_config = s_configuration_descriptor;
 #endif
     ESP_RETURN_ON_ERROR(tinyusb_driver_install(&tusb_cfg), TAG, "tinyusb install failed");
 
-    const BaseType_t ok = xTaskCreate(cmsis_dap_worker_task,
-                                      "cmsis_dap_usb",
-                                      CMSIS_DAP_WORKER_STACK_SIZE,
-                                      NULL,
-                                      5,
-                                      &s_state.worker_task);
+    const BaseType_t ok = xTaskCreatePinnedToCore(cmsis_dap_worker_task,
+                                                  "cmsis_dap_usb",
+                                                  CMSIS_DAP_WORKER_STACK_SIZE,
+                                                  NULL,
+                                                  5,
+                                                  &s_state.worker_task,
+                                                  WDAP_WORK_CORE_ID);
     if (ok != pdPASS) {
         return ESP_FAIL;
     }

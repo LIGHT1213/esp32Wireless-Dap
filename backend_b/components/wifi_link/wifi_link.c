@@ -17,6 +17,8 @@
 #include "freertos/task.h"
 
 static const char *TAG = "wifi_link_b";
+static const int WDAP_SOCKET_BUFFER_BYTES = (int)(WDAP_MAX_FRAME_SIZE * 8U);
+static const BaseType_t WDAP_SWD_CORE_ID = 1;
 
 static void wifi_event_handler(void *arg,
                                esp_event_base_t event_base,
@@ -48,6 +50,9 @@ static int create_socket(void)
         ESP_LOGE(TAG, "socket create failed: errno=%d", errno);
         return -1;
     }
+
+    (void)setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &WDAP_SOCKET_BUFFER_BYTES, sizeof(WDAP_SOCKET_BUFFER_BYTES));
+    (void)setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &WDAP_SOCKET_BUFFER_BYTES, sizeof(WDAP_SOCKET_BUFFER_BYTES));
 
     const struct sockaddr_in bind_addr = {
         .sin_family = AF_INET,
@@ -146,7 +151,14 @@ esp_err_t wifi_link_init(void)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &ap_cfg));
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW_HT40));
 
-    const BaseType_t ok = xTaskCreate(udp_server_task, "udp_server_b", 6144, NULL, 5, NULL);
+    const BaseType_t ok = xTaskCreatePinnedToCore(udp_server_task,
+                                                  "udp_server_b",
+                                                  6144,
+                                                  NULL,
+                                                  5,
+                                                  NULL,
+                                                  WDAP_SWD_CORE_ID);
     return ok == pdPASS ? ESP_OK : ESP_FAIL;
 }
