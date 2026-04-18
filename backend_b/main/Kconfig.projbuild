@@ -24,7 +24,7 @@ config WDAP_BACKEND_MOCK_SWD
 
 config WDAP_SWD_DEFAULT_HZ
     int "Default SWD clock"
-    range 1000 4000000
+    range 1000 10000000
     default 1000000
 
 config WDAP_SWD_DIAG_VERBOSE
