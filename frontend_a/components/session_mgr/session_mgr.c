@@ -1,8 +1,10 @@
 #include "session_mgr.h"
 
+#include <inttypes.h>
 #include <string.h>
 
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/semphr.h"
@@ -23,6 +25,15 @@ typedef struct {
     uint16_t next_seq;
     uint16_t pending_seq;
     uint32_t last_activity_ms;
+    uint32_t stats_cmd_count;
+    uint32_t stats_block_write_count;
+    uint32_t stats_block_read_count;
+    uint32_t stats_transfer_sequence_count;
+    uint32_t stats_other_count;
+    uint32_t stats_tx_payload_bytes;
+    uint32_t stats_rx_payload_bytes;
+    uint64_t stats_wait_us_total;
+    uint64_t stats_wait_us_max;
     bool pending;
     wdap_message_t response;
 } session_mgr_state_t;
@@ -97,6 +108,64 @@ bool session_mgr_is_ready(void)
     return wifi_link_is_ready();
 }
 
+static void session_mgr_record_stats(uint8_t cmd, uint16_t tx_payload_len, uint16_t rx_payload_len, uint64_t wait_us)
+{
+    ++s_state.stats_cmd_count;
+    s_state.stats_tx_payload_bytes += tx_payload_len;
+    s_state.stats_rx_payload_bytes += rx_payload_len;
+    s_state.stats_wait_us_total += wait_us;
+    if (wait_us > s_state.stats_wait_us_max) {
+        s_state.stats_wait_us_max = wait_us;
+    }
+
+    switch (cmd) {
+    case WDAP_CMD_SWD_WRITE_BLOCK:
+        ++s_state.stats_block_write_count;
+        break;
+    case WDAP_CMD_SWD_READ_BLOCK:
+        ++s_state.stats_block_read_count;
+        break;
+    case WDAP_CMD_SWD_TRANSFER_SEQUENCE:
+        ++s_state.stats_transfer_sequence_count;
+        break;
+    default:
+        ++s_state.stats_other_count;
+        break;
+    }
+}
+
+void session_mgr_log_stats_and_reset(const char *reason)
+{
+    const uint32_t count = s_state.stats_cmd_count;
+    if (count == 0U) {
+        return;
+    }
+
+    const uint64_t avg_wait_us = s_state.stats_wait_us_total / count;
+    ESP_LOGI(TAG,
+             "stats reason=%s cmds=%" PRIu32 " wr_blk=%" PRIu32 " rd_blk=%" PRIu32 " xfer_seq=%" PRIu32 " other=%" PRIu32 " tx_payload=%" PRIu32 " rx_payload=%" PRIu32 " avg_wait_us=%" PRIu64 " max_wait_us=%" PRIu64,
+             reason != NULL ? reason : "unknown",
+             count,
+             s_state.stats_block_write_count,
+             s_state.stats_block_read_count,
+             s_state.stats_transfer_sequence_count,
+             s_state.stats_other_count,
+             s_state.stats_tx_payload_bytes,
+             s_state.stats_rx_payload_bytes,
+             avg_wait_us,
+             s_state.stats_wait_us_max);
+
+    s_state.stats_cmd_count = 0U;
+    s_state.stats_block_write_count = 0U;
+    s_state.stats_block_read_count = 0U;
+    s_state.stats_transfer_sequence_count = 0U;
+    s_state.stats_other_count = 0U;
+    s_state.stats_tx_payload_bytes = 0U;
+    s_state.stats_rx_payload_bytes = 0U;
+    s_state.stats_wait_us_total = 0U;
+    s_state.stats_wait_us_max = 0U;
+}
+
 esp_err_t session_mgr_send_command(uint8_t cmd,
                                    const void *payload,
                                    uint16_t payload_len,
@@ -154,6 +223,7 @@ esp_err_t session_mgr_send_command(uint8_t cmd,
     }
 
     const TickType_t wait_ticks = pdMS_TO_TICKS(timeout_ms);
+    const uint64_t start_us = (uint64_t)esp_timer_get_time();
 
     for (int attempt = 0; attempt <= CONFIG_WDAP_FRONTEND_RETRY_COUNT; ++attempt) {
         err = wifi_link_send_packet(encoded, encoded_size);
@@ -169,6 +239,8 @@ esp_err_t session_mgr_send_command(uint8_t cmd,
         if ((bits & RESPONSE_READY_BIT) != 0) {
             if (xSemaphoreTake(s_state.state_lock, pdMS_TO_TICKS(50)) == pdTRUE) {
                 *response = s_state.response;
+                const uint64_t wait_us = (uint64_t)esp_timer_get_time() - start_us;
+                session_mgr_record_stats(cmd, payload_len, response->payload_len, wait_us);
                 s_state.pending = false;
                 s_state.last_activity_ms = log_utils_uptime_ms();
                 xSemaphoreGive(s_state.state_lock);

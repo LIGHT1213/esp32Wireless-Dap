@@ -310,6 +310,18 @@ static esp_err_t swd_ap_read_raw(uint8_t addr, uint32_t *value, uint8_t *ack_out
     return ack_error_to_esp(ack, err);
 }
 
+static esp_err_t ensure_ap_bank_selected(uint8_t addr)
+{
+    const uint32_t current_select = (s_state.dp_select == UINT32_MAX) ? 0U : s_state.dp_select;
+    const uint32_t desired_select = (current_select & ~0xF0U) | (uint32_t)(addr & 0xF0U);
+
+    if (s_state.dp_select != UINT32_MAX && desired_select == s_state.dp_select) {
+        return ESP_OK;
+    }
+
+    return swd_dp_write(DP_SELECT_ADDR, desired_select, NULL);
+}
+
 static esp_err_t swd_ap_write_raw(uint8_t addr, uint32_t value, uint8_t *ack_out)
 {
     uint8_t ack = WDAP_ACK_NONE;
@@ -733,6 +745,7 @@ esp_err_t swd_engine_read_ap(uint8_t addr, uint32_t *value, uint8_t *ack)
     }
 
     ESP_RETURN_ON_ERROR(ensure_link_ready(), TAG, "swd link not ready");
+    ESP_RETURN_ON_ERROR(ensure_ap_bank_selected(addr), TAG, "select ap bank failed");
 
     uint32_t dummy = 0;
     uint8_t ap_ack = WDAP_ACK_NONE;
@@ -765,6 +778,7 @@ esp_err_t swd_engine_write_ap(uint8_t addr, uint32_t value, uint8_t *ack)
     }
 
     ESP_RETURN_ON_ERROR(ensure_link_ready(), TAG, "swd link not ready");
+    ESP_RETURN_ON_ERROR(ensure_ap_bank_selected(addr), TAG, "select ap bank failed");
 
     uint8_t ap_ack = WDAP_ACK_NONE;
     const esp_err_t err = swd_ap_write_raw(addr, value, &ap_ack);

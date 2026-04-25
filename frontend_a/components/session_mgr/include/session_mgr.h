@@ -11,6 +11,7 @@
 esp_err_t session_mgr_init(void);
 esp_err_t session_mgr_start(void);
 bool session_mgr_is_ready(void);
+void session_mgr_log_stats_and_reset(const char *reason);
 esp_err_t session_mgr_send_command(uint8_t cmd,
                                    const void *payload,
                                    uint16_t payload_len,

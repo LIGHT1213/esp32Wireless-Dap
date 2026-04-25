@@ -355,6 +355,10 @@ static esp_err_t do_read_reg(bool apndp, uint8_t addr, uint32_t *value, uint8_t 
         err = transact(WDAP_CMD_SWD_READ_AP, &request, sizeof(request), &response);
     } else if (addr == 0x00U) {
         err = transact(WDAP_CMD_READ_DP_IDCODE, NULL, 0, &response);
+    } else if (addr == 0x08U) {
+        *value = s_state.dp_select;
+        *response_value = DAP_TRANSFER_OK;
+        return ESP_OK;
     } else {
         wdap_reg_read_request_t request = {
             .addr = addr,
@@ -379,6 +383,16 @@ static esp_err_t do_read_reg(bool apndp, uint8_t addr, uint32_t *value, uint8_t 
 
 static esp_err_t do_write_reg(bool apndp, uint8_t addr, uint32_t value, uint8_t *response_value)
 {
+    if (!apndp && addr == 0x08U) {
+        const uint32_t previous_select = s_state.dp_select;
+        s_state.dp_select = value;
+        *response_value = DAP_TRANSFER_OK;
+
+        if ((previous_select & 0x0FU) == (value & 0x0FU)) {
+            return ESP_OK;
+        }
+    }
+
     wdap_message_t response = {0};
     wdap_reg_write_request_t request = {
         .addr = apndp ? (uint8_t)((s_state.dp_select & 0xF0U) | (addr & 0x0CU)) : addr,
@@ -482,6 +496,7 @@ static size_t handle_dap_connect(const uint8_t *request, uint8_t *response)
 
 static size_t handle_dap_disconnect(uint8_t *response)
 {
+    session_mgr_log_stats_and_reset("dap_disconnect");
     s_state.debug_port = DAP_PORT_DISABLED;
     s_state.dp_select = 0;
     s_state.swj_pins = BIT(DAP_SWJ_SWCLK_TCK) | BIT(DAP_SWJ_SWDIO_TMS) | BIT(DAP_SWJ_nRESET);
@@ -679,10 +694,8 @@ static bool is_safe_batched_transfer_request(const uint8_t *request, uint8_t req
 
     for (uint8_t i = 0; i < request_count; ++i) {
         const uint8_t request_value = *cursor++;
-        const bool apndp = (request_value & DAP_TRANSFER_APNDP) != 0U;
         const bool read = (request_value & DAP_TRANSFER_RNW) != 0U;
         const bool has_match_value = (request_value & DAP_TRANSFER_MATCH_VALUE) != 0U;
-        const bool write_match_mask = (!read) && ((request_value & DAP_TRANSFER_MATCH_MASK) != 0U);
 
         if (read) {
             if (has_match_value) {
@@ -692,9 +705,6 @@ static bool is_safe_batched_transfer_request(const uint8_t *request, uint8_t req
         }
 
         cursor += sizeof(uint32_t);
-        if (apndp && !write_match_mask) {
-            return false;
-        }
     }
 
     return true;
@@ -1005,7 +1015,7 @@ static size_t handle_dap_transfer_block(const uint8_t *request, uint8_t *respons
     response[1] = (uint8_t)(completed >> 0);
     response[2] = (uint8_t)(completed >> 8);
     response[3] = response_value;
-    if (!read && completed > 0U && response_value == DAP_TRANSFER_OK) {
+    if (!read && !apndp && completed > 0U && response_value == DAP_TRANSFER_OK) {
         (void)do_check_write(&response[3]);
     }
     if (read && completed > 0U) {

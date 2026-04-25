@@ -433,6 +433,23 @@ static esp_err_t handle_write_block(const wdap_message_t *request, wdap_message_
         ++completed;
     }
 
+    if (apndp && completed > 0U && ack == WDAP_ACK_OK) {
+        uint32_t ignored = 0;
+        uint8_t flush_ack = WDAP_ACK_NONE;
+        const esp_err_t flush_err = execute_read_with_retry(swd_engine_read_dp,
+                                                            0x0CU,
+                                                            &ignored,
+                                                            &flush_ack,
+                                                            s_transfer_settings.retry_count);
+        if (flush_ack == WDAP_ACK_NONE) {
+            flush_ack = WDAP_ACK_FAULT;
+        }
+        ack = flush_ack;
+        if (flush_err != ESP_OK && ack == WDAP_ACK_OK) {
+            ack = WDAP_ACK_FAULT;
+        }
+    }
+
     response->ack = ack;
     wdap_block_response_t resp = {
         .ack = ack,
@@ -583,11 +600,13 @@ static esp_err_t handle_transfer_sequence(const wdap_message_t *request, wdap_me
                 --retries;
             } while (true);
 
-            if ((size_t)(&resp_payload[WDAP_MAX_PAYLOAD] - dst) < sizeof(uint32_t)) {
-                return ESP_ERR_INVALID_SIZE;
+            if (!use_match) {
+                if ((size_t)(&resp_payload[WDAP_MAX_PAYLOAD] - dst) < sizeof(uint32_t)) {
+                    return ESP_ERR_INVALID_SIZE;
+                }
+                write_u32_le(dst, value);
+                dst += sizeof(uint32_t);
             }
-            write_u32_le(dst, value);
-            dst += sizeof(uint32_t);
         } else {
             if ((size_t)(end - cursor) < sizeof(uint32_t)) {
                 return ESP_ERR_INVALID_ARG;

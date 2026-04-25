@@ -111,14 +111,13 @@ static inline void IRAM_ATTR swdio_set_level(uint32_t level)
 
 static void IRAM_ATTR delay_half_period(void)
 {
-    if (s_state.half_period_cycles > 0U) {
-        const uint32_t start = esp_cpu_get_cycle_count();
-        while ((uint32_t)(esp_cpu_get_cycle_count() - start) < s_state.half_period_cycles) {
-        }
+    if (s_state.half_period_cycles == 0U) {
         return;
     }
 
-    esp_rom_delay_us(s_state.half_period_us);
+    const uint32_t start = esp_cpu_get_cycle_count();
+    while ((uint32_t)(esp_cpu_get_cycle_count() - start) < s_state.half_period_cycles) {
+    }
 }
 
 static inline void IRAM_ATTR set_swdio_output(int level)
@@ -348,14 +347,9 @@ esp_err_t swd_phy_set_clock(uint32_t hz)
     }
 
     s_state.clock_hz = hz;
-    s_state.half_period_us = 500000U / hz;
-    if (s_state.half_period_us == 0U) {
-        s_state.half_period_us = 1U;
-    }
-    s_state.half_period_cycles = (uint32_t)(((uint64_t)esp_rom_get_cpu_ticks_per_us() * 500000ULL) / hz);
-    if (s_state.half_period_cycles == 0U) {
-        s_state.half_period_cycles = 1U;
-    }
+    s_state.half_period_us = 0U;
+    const uint32_t half_period_cycles = (uint32_t)(((uint64_t)esp_rom_get_cpu_ticks_per_us() * 500000ULL) / hz);
+    s_state.half_period_cycles = (half_period_cycles <= 80U) ? 0U : half_period_cycles;
     return ESP_OK;
 }
 
