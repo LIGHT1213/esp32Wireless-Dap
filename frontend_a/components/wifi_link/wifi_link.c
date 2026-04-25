@@ -11,6 +11,7 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "esp_timer.h"
 #include "esp_wifi.h"
 #include "lwip/inet.h"
 #include "log_utils.h"
@@ -33,10 +34,39 @@ static void *s_callback_ctx;
 static SemaphoreHandle_t s_socket_lock;
 static esp_netif_t *s_wifi_netif;
 
+typedef struct {
+    uint32_t ensure_calls;
+    uint32_t ensure_reuse_count;
+    uint32_t ensure_create_count;
+    uint32_t ensure_fail_count;
+    uint64_t ensure_setup_us_total;
+    uint64_t ensure_setup_us_max;
+    uint32_t tx_calls;
+    uint32_t tx_bytes;
+    uint32_t tx_fail_count;
+    uint64_t tx_lock_wait_us_total;
+    uint64_t tx_lock_wait_us_max;
+    uint64_t tx_send_us_total;
+    uint64_t tx_send_us_max;
+    uint32_t rx_packets;
+    uint32_t rx_bytes;
+    uint32_t rx_timeout_count;
+    uint32_t rx_error_count;
+    uint32_t rx_reconnect_count;
+    uint64_t rx_recv_us_total;
+    uint64_t rx_recv_us_max;
+    uint64_t rx_callback_us_total;
+    uint64_t rx_callback_us_max;
+} wifi_link_stats_t;
+
+static wifi_link_stats_t s_stats;
+
 static const int WIFI_CONNECTED_BIT = BIT0;
 static const int WDAP_SOCKET_BUFFER_BYTES = (int)(WDAP_MAX_FRAME_SIZE * 8U);
 static const BaseType_t WDAP_NET_CORE_ID = 0;
 static const uint32_t WDAP_ANNOUNCE_INTERVAL_MS = 5000U;
+static const UBaseType_t WDAP_RX_TASK_PRIORITY = 8U;
+static const UBaseType_t WDAP_ANNOUNCE_TASK_PRIORITY = 3U;
 
 static esp_err_t send_device_announce(void)
 {
@@ -86,22 +116,28 @@ static void close_socket(void)
 
 static esp_err_t ensure_socket(void)
 {
+    ++s_stats.ensure_calls;
     if (s_socket_lock == NULL) {
+        ++s_stats.ensure_fail_count;
         return ESP_ERR_INVALID_STATE;
     }
 
     if (xSemaphoreTake(s_socket_lock, portMAX_DELAY) != pdTRUE) {
+        ++s_stats.ensure_fail_count;
         return ESP_ERR_TIMEOUT;
     }
 
     if (s_socket >= 0) {
+        ++s_stats.ensure_reuse_count;
         xSemaphoreGive(s_socket_lock);
         return ESP_OK;
     }
 
+    const int64_t setup_start_us = esp_timer_get_time();
     const int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
     if (sock < 0) {
         ESP_LOGE(TAG, "socket create failed: errno=%d", errno);
+        ++s_stats.ensure_fail_count;
         xSemaphoreGive(s_socket_lock);
         return ESP_FAIL;
     }
@@ -122,6 +158,7 @@ static esp_err_t ensure_socket(void)
     if (inet_pton(AF_INET, CONFIG_WDAP_BACKEND_IP, &peer_addr.sin_addr) != 1) {
         ESP_LOGE(TAG, "invalid backend ip: %s", CONFIG_WDAP_BACKEND_IP);
         close(sock);
+        ++s_stats.ensure_fail_count;
         xSemaphoreGive(s_socket_lock);
         return ESP_ERR_INVALID_ARG;
     }
@@ -129,11 +166,18 @@ static esp_err_t ensure_socket(void)
     if (connect(sock, (struct sockaddr *)&peer_addr, sizeof(peer_addr)) != 0) {
         ESP_LOGE(TAG, "socket connect failed: errno=%d", errno);
         close(sock);
+        ++s_stats.ensure_fail_count;
         xSemaphoreGive(s_socket_lock);
         return ESP_FAIL;
     }
 
     s_socket = sock;
+    ++s_stats.ensure_create_count;
+    const uint64_t setup_us = (uint64_t)(esp_timer_get_time() - setup_start_us);
+    s_stats.ensure_setup_us_total += setup_us;
+    if (setup_us > s_stats.ensure_setup_us_max) {
+        s_stats.ensure_setup_us_max = setup_us;
+    }
     xSemaphoreGive(s_socket_lock);
     ESP_LOGI(TAG, "udp peer ready: %s:%d", CONFIG_WDAP_BACKEND_IP, CONFIG_WDAP_UDP_PORT);
     return ESP_OK;
@@ -160,15 +204,34 @@ static void rx_task(void *arg)
             continue;
         }
 
+        const int64_t recv_start_us = esp_timer_get_time();
         const ssize_t received = recv(sock, buffer, sizeof(buffer), 0);
+        const uint64_t recv_us = (uint64_t)(esp_timer_get_time() - recv_start_us);
         if (received > 0) {
+            ++s_stats.rx_packets;
+            s_stats.rx_bytes += (uint32_t)received;
+            s_stats.rx_recv_us_total += recv_us;
+            if (recv_us > s_stats.rx_recv_us_max) {
+                s_stats.rx_recv_us_max = recv_us;
+            }
             if (s_callback != NULL) {
+                const int64_t callback_start_us = esp_timer_get_time();
                 s_callback(buffer, (size_t)received, s_callback_ctx);
+                const uint64_t callback_us = (uint64_t)(esp_timer_get_time() - callback_start_us);
+                s_stats.rx_callback_us_total += callback_us;
+                if (callback_us > s_stats.rx_callback_us_max) {
+                    s_stats.rx_callback_us_max = callback_us;
+                }
             }
             continue;
         }
 
+        if (received < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+            ++s_stats.rx_timeout_count;
+        }
         if (received < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+            ++s_stats.rx_error_count;
+            ++s_stats.rx_reconnect_count;
             ESP_LOGW(TAG, "recv failed: errno=%d, reconnecting socket", errno);
             close_socket();
         }
@@ -264,7 +327,7 @@ esp_err_t wifi_link_init(wifi_link_rx_cb_t callback, void *ctx)
                                                   "wifi_rx_a",
                                                   4096,
                                                   NULL,
-                                                  5,
+                                                  WDAP_RX_TASK_PRIORITY,
                                                   &s_rx_task_handle,
                                                   WDAP_NET_CORE_ID);
     if (ok != pdPASS) {
@@ -275,7 +338,7 @@ esp_err_t wifi_link_init(wifi_link_rx_cb_t callback, void *ctx)
                                                            "wifi_announce_a",
                                                            3072,
                                                            NULL,
-                                                           4,
+                                                           WDAP_ANNOUNCE_TASK_PRIORITY,
                                                            &s_announce_task_handle,
                                                            WDAP_NET_CORE_ID);
     if (announce_ok != pdPASS) {
@@ -302,22 +365,92 @@ esp_err_t wifi_link_send_packet(const uint8_t *data, size_t len)
     }
 
     if (ensure_socket() != ESP_OK) {
+        ++s_stats.tx_fail_count;
         return ESP_FAIL;
     }
 
+    const int64_t lock_wait_start_us = esp_timer_get_time();
     if (xSemaphoreTake(s_socket_lock, portMAX_DELAY) != pdTRUE) {
+        ++s_stats.tx_fail_count;
         return ESP_ERR_TIMEOUT;
     }
+    const uint64_t lock_wait_us = (uint64_t)(esp_timer_get_time() - lock_wait_start_us);
+    s_stats.tx_lock_wait_us_total += lock_wait_us;
+    if (lock_wait_us > s_stats.tx_lock_wait_us_max) {
+        s_stats.tx_lock_wait_us_max = lock_wait_us;
+    }
 
+    const int64_t send_start_us = esp_timer_get_time();
     const ssize_t sent = send(s_socket, data, len, 0);
+    const uint64_t send_us = (uint64_t)(esp_timer_get_time() - send_start_us);
     xSemaphoreGive(s_socket_lock);
+    ++s_stats.tx_calls;
+    s_stats.tx_bytes += (uint32_t)len;
+    s_stats.tx_send_us_total += send_us;
+    if (send_us > s_stats.tx_send_us_max) {
+        s_stats.tx_send_us_max = send_us;
+    }
     if (sent != (ssize_t)len) {
+        ++s_stats.tx_fail_count;
         ESP_LOGW(TAG, "send failed: expected=%u actual=%d errno=%d", (unsigned)len, (int)sent, errno);
         close_socket();
         return ESP_FAIL;
     }
 
     return ESP_OK;
+}
+
+void wifi_link_log_stats_and_reset(const char *reason)
+{
+    if (s_stats.tx_calls == 0U && s_stats.rx_packets == 0U &&
+        s_stats.ensure_calls == 0U && s_stats.rx_timeout_count == 0U &&
+        s_stats.rx_error_count == 0U) {
+        return;
+    }
+
+    const uint64_t ensure_avg_us = s_stats.ensure_create_count > 0U
+                                       ? (s_stats.ensure_setup_us_total / s_stats.ensure_create_count)
+                                       : 0U;
+    const uint64_t tx_lock_avg_us = s_stats.tx_calls > 0U
+                                        ? (s_stats.tx_lock_wait_us_total / s_stats.tx_calls)
+                                        : 0U;
+    const uint64_t tx_send_avg_us = s_stats.tx_calls > 0U
+                                        ? (s_stats.tx_send_us_total / s_stats.tx_calls)
+                                        : 0U;
+    const uint64_t rx_recv_avg_us = s_stats.rx_packets > 0U
+                                        ? (s_stats.rx_recv_us_total / s_stats.rx_packets)
+                                        : 0U;
+    const uint64_t rx_cb_avg_us = s_stats.rx_packets > 0U
+                                      ? (s_stats.rx_callback_us_total / s_stats.rx_packets)
+                                      : 0U;
+
+    ESP_LOGI(TAG,
+             "stats reason=%s ensure_calls=%" PRIu32 " ensure_reuse=%" PRIu32 " ensure_create=%" PRIu32 " ensure_fail=%" PRIu32 " ensure_avg_us=%" PRIu64 " ensure_max_us=%" PRIu64 " tx_calls=%" PRIu32 " tx_bytes=%" PRIu32 " tx_fail=%" PRIu32 " tx_lock_avg_us=%" PRIu64 " tx_lock_max_us=%" PRIu64 " tx_send_avg_us=%" PRIu64 " tx_send_max_us=%" PRIu64 " rx_pkts=%" PRIu32 " rx_bytes=%" PRIu32 " rx_timeouts=%" PRIu32 " rx_errors=%" PRIu32 " rx_reconnects=%" PRIu32 " rx_recv_avg_us=%" PRIu64 " rx_recv_max_us=%" PRIu64 " rx_cb_avg_us=%" PRIu64 " rx_cb_max_us=%" PRIu64,
+             reason != NULL ? reason : "unknown",
+             s_stats.ensure_calls,
+             s_stats.ensure_reuse_count,
+             s_stats.ensure_create_count,
+             s_stats.ensure_fail_count,
+             ensure_avg_us,
+             s_stats.ensure_setup_us_max,
+             s_stats.tx_calls,
+             s_stats.tx_bytes,
+             s_stats.tx_fail_count,
+             tx_lock_avg_us,
+             s_stats.tx_lock_wait_us_max,
+             tx_send_avg_us,
+             s_stats.tx_send_us_max,
+             s_stats.rx_packets,
+             s_stats.rx_bytes,
+             s_stats.rx_timeout_count,
+             s_stats.rx_error_count,
+             s_stats.rx_reconnect_count,
+             rx_recv_avg_us,
+             s_stats.rx_recv_us_max,
+             rx_cb_avg_us,
+             s_stats.rx_callback_us_max);
+
+    memset(&s_stats, 0, sizeof(s_stats));
 }
 
 esp_err_t wifi_link_get_local_ip_string(char *buffer, size_t buffer_size)

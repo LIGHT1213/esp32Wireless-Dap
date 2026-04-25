@@ -12,3 +12,4 @@ esp_err_t wifi_link_init(wifi_link_rx_cb_t callback, void *ctx);
 bool wifi_link_is_ready(void);
 esp_err_t wifi_link_send_packet(const uint8_t *data, size_t len);
 esp_err_t wifi_link_get_local_ip_string(char *buffer, size_t buffer_size);
+void wifi_link_log_stats_and_reset(const char *reason);

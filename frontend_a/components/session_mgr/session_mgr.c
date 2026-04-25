@@ -25,15 +25,31 @@ typedef struct {
     uint16_t next_seq;
     uint16_t pending_seq;
     uint32_t last_activity_ms;
+    uint32_t stats_request_count;
     uint32_t stats_cmd_count;
     uint32_t stats_block_write_count;
     uint32_t stats_block_read_count;
     uint32_t stats_transfer_sequence_count;
     uint32_t stats_other_count;
+    uint32_t stats_attempt_total;
+    uint32_t stats_attempt_max;
+    uint32_t stats_wait_timeout_count;
+    uint32_t stats_send_fail_count;
+    uint32_t stats_failed_cmd_count;
     uint32_t stats_tx_payload_bytes;
     uint32_t stats_rx_payload_bytes;
+    uint64_t stats_encode_us_total;
+    uint64_t stats_encode_us_max;
+    uint64_t stats_send_us_total;
+    uint64_t stats_send_us_max;
+    uint64_t stats_event_wait_us_total;
+    uint64_t stats_event_wait_us_max;
+    uint64_t stats_match_rtt_us_total;
+    uint64_t stats_match_rtt_us_max;
     uint64_t stats_wait_us_total;
     uint64_t stats_wait_us_max;
+    uint64_t pending_send_us;
+    uint64_t pending_last_rtt_us;
     bool pending;
     wdap_message_t response;
 } session_mgr_state_t;
@@ -137,15 +153,22 @@ static void session_mgr_record_stats(uint8_t cmd, uint16_t tx_payload_len, uint1
 void session_mgr_log_stats_and_reset(const char *reason)
 {
     const uint32_t count = s_state.stats_cmd_count;
-    if (count == 0U) {
+    if (count == 0U && s_state.stats_request_count == 0U) {
+        wifi_link_log_stats_and_reset(reason);
         return;
     }
 
-    const uint64_t avg_wait_us = s_state.stats_wait_us_total / count;
+    const uint64_t avg_wait_us = count > 0U ? (s_state.stats_wait_us_total / count) : 0U;
+    const uint64_t avg_encode_us = s_state.stats_request_count > 0U ? (s_state.stats_encode_us_total / s_state.stats_request_count) : 0U;
+    const uint64_t avg_send_us = s_state.stats_attempt_total > 0U ? (s_state.stats_send_us_total / s_state.stats_attempt_total) : 0U;
+    const uint64_t avg_event_wait_us = s_state.stats_attempt_total > 0U ? (s_state.stats_event_wait_us_total / s_state.stats_attempt_total) : 0U;
+    const uint64_t avg_match_rtt_us = count > 0U ? (s_state.stats_match_rtt_us_total / count) : 0U;
     ESP_LOGI(TAG,
-             "stats reason=%s cmds=%" PRIu32 " wr_blk=%" PRIu32 " rd_blk=%" PRIu32 " xfer_seq=%" PRIu32 " other=%" PRIu32 " tx_payload=%" PRIu32 " rx_payload=%" PRIu32 " avg_wait_us=%" PRIu64 " max_wait_us=%" PRIu64,
+             "stats reason=%s req=%" PRIu32 " ok=%" PRIu32 " fail=%" PRIu32 " wr_blk=%" PRIu32 " rd_blk=%" PRIu32 " xfer_seq=%" PRIu32 " other=%" PRIu32 " tx_payload=%" PRIu32 " rx_payload=%" PRIu32 " avg_wait_us=%" PRIu64 " max_wait_us=%" PRIu64,
              reason != NULL ? reason : "unknown",
+             s_state.stats_request_count,
              count,
+             s_state.stats_failed_cmd_count,
              s_state.stats_block_write_count,
              s_state.stats_block_read_count,
              s_state.stats_transfer_sequence_count,
@@ -154,16 +177,46 @@ void session_mgr_log_stats_and_reset(const char *reason)
              s_state.stats_rx_payload_bytes,
              avg_wait_us,
              s_state.stats_wait_us_max);
+    ESP_LOGI(TAG,
+             "timing reason=%s attempts_total=%" PRIu32 " attempt_max=%" PRIu32 " wait_timeouts=%" PRIu32 " send_fail=%" PRIu32 " encode_avg_us=%" PRIu64 " encode_max_us=%" PRIu64 " send_avg_us=%" PRIu64 " send_max_us=%" PRIu64 " evt_avg_us=%" PRIu64 " evt_max_us=%" PRIu64 " rtt_avg_us=%" PRIu64 " rtt_max_us=%" PRIu64,
+             reason != NULL ? reason : "unknown",
+             s_state.stats_attempt_total,
+             s_state.stats_attempt_max,
+             s_state.stats_wait_timeout_count,
+             s_state.stats_send_fail_count,
+             avg_encode_us,
+             s_state.stats_encode_us_max,
+             avg_send_us,
+             s_state.stats_send_us_max,
+             avg_event_wait_us,
+             s_state.stats_event_wait_us_max,
+             avg_match_rtt_us,
+             s_state.stats_match_rtt_us_max);
 
+    s_state.stats_request_count = 0U;
     s_state.stats_cmd_count = 0U;
     s_state.stats_block_write_count = 0U;
     s_state.stats_block_read_count = 0U;
     s_state.stats_transfer_sequence_count = 0U;
     s_state.stats_other_count = 0U;
+    s_state.stats_attempt_total = 0U;
+    s_state.stats_attempt_max = 0U;
+    s_state.stats_wait_timeout_count = 0U;
+    s_state.stats_send_fail_count = 0U;
+    s_state.stats_failed_cmd_count = 0U;
     s_state.stats_tx_payload_bytes = 0U;
     s_state.stats_rx_payload_bytes = 0U;
+    s_state.stats_encode_us_total = 0U;
+    s_state.stats_encode_us_max = 0U;
+    s_state.stats_send_us_total = 0U;
+    s_state.stats_send_us_max = 0U;
+    s_state.stats_event_wait_us_total = 0U;
+    s_state.stats_event_wait_us_max = 0U;
+    s_state.stats_match_rtt_us_total = 0U;
+    s_state.stats_match_rtt_us_max = 0U;
     s_state.stats_wait_us_total = 0U;
     s_state.stats_wait_us_max = 0U;
+    wifi_link_log_stats_and_reset(reason);
 }
 
 esp_err_t session_mgr_send_command(uint8_t cmd,
@@ -206,14 +259,24 @@ esp_err_t session_mgr_send_command(uint8_t cmd,
 
     s_state.pending = true;
     s_state.pending_seq = request.seq;
+    s_state.pending_send_us = 0U;
+    s_state.pending_last_rtt_us = 0U;
     s_state.last_activity_ms = log_utils_uptime_ms();
     xEventGroupClearBits(s_state.event_group, RESPONSE_READY_BIT);
     xSemaphoreGive(s_state.state_lock);
 
     uint8_t encoded[WDAP_MAX_FRAME_SIZE];
     size_t encoded_size = 0;
+    ++s_state.stats_request_count;
+    const int64_t encode_start_us = esp_timer_get_time();
     esp_err_t err = transport_proto_encode(&request, encoded, sizeof(encoded), &encoded_size);
+    const uint64_t encode_us = (uint64_t)(esp_timer_get_time() - encode_start_us);
+    s_state.stats_encode_us_total += encode_us;
+    if (encode_us > s_state.stats_encode_us_max) {
+        s_state.stats_encode_us_max = encode_us;
+    }
     if (err != ESP_OK) {
+        ++s_state.stats_failed_cmd_count;
         if (xSemaphoreTake(s_state.state_lock, pdMS_TO_TICKS(50)) == pdTRUE) {
             s_state.pending = false;
             xSemaphoreGive(s_state.state_lock);
@@ -224,23 +287,49 @@ esp_err_t session_mgr_send_command(uint8_t cmd,
 
     const TickType_t wait_ticks = pdMS_TO_TICKS(timeout_ms);
     const uint64_t start_us = (uint64_t)esp_timer_get_time();
+    uint32_t attempts = 0U;
 
     for (int attempt = 0; attempt <= CONFIG_WDAP_FRONTEND_RETRY_COUNT; ++attempt) {
+        ++attempts;
+        s_state.pending_last_rtt_us = 0U;
+        s_state.pending_send_us = (uint64_t)esp_timer_get_time();
+        const int64_t send_start_us = esp_timer_get_time();
         err = wifi_link_send_packet(encoded, encoded_size);
+        const uint64_t send_us = (uint64_t)(esp_timer_get_time() - send_start_us);
+        s_state.stats_send_us_total += send_us;
+        if (send_us > s_state.stats_send_us_max) {
+            s_state.stats_send_us_max = send_us;
+        }
         if (err != ESP_OK) {
+            ++s_state.stats_send_fail_count;
             break;
         }
 
+        const int64_t event_wait_start_us = esp_timer_get_time();
         const EventBits_t bits = xEventGroupWaitBits(s_state.event_group,
                                                      RESPONSE_READY_BIT,
                                                      pdTRUE,
                                                      pdFALSE,
                                                      wait_ticks);
+        const uint64_t event_wait_us = (uint64_t)(esp_timer_get_time() - event_wait_start_us);
+        s_state.stats_event_wait_us_total += event_wait_us;
+        if (event_wait_us > s_state.stats_event_wait_us_max) {
+            s_state.stats_event_wait_us_max = event_wait_us;
+        }
         if ((bits & RESPONSE_READY_BIT) != 0) {
             if (xSemaphoreTake(s_state.state_lock, pdMS_TO_TICKS(50)) == pdTRUE) {
                 *response = s_state.response;
                 const uint64_t wait_us = (uint64_t)esp_timer_get_time() - start_us;
+                const uint64_t matched_rtt_us = s_state.pending_last_rtt_us;
                 session_mgr_record_stats(cmd, payload_len, response->payload_len, wait_us);
+                s_state.stats_attempt_total += attempts;
+                if (attempts > s_state.stats_attempt_max) {
+                    s_state.stats_attempt_max = attempts;
+                }
+                s_state.stats_match_rtt_us_total += matched_rtt_us;
+                if (matched_rtt_us > s_state.stats_match_rtt_us_max) {
+                    s_state.stats_match_rtt_us_max = matched_rtt_us;
+                }
                 s_state.pending = false;
                 s_state.last_activity_ms = log_utils_uptime_ms();
                 xSemaphoreGive(s_state.state_lock);
@@ -256,9 +345,15 @@ esp_err_t session_mgr_send_command(uint8_t cmd,
                  wdap_cmd_to_string(cmd),
                  request.seq,
                  attempt + 1);
+        ++s_state.stats_wait_timeout_count;
         err = ESP_ERR_TIMEOUT;
     }
 
+    s_state.stats_attempt_total += attempts;
+    if (attempts > s_state.stats_attempt_max) {
+        s_state.stats_attempt_max = attempts;
+    }
+    ++s_state.stats_failed_cmd_count;
     if (xSemaphoreTake(s_state.state_lock, pdMS_TO_TICKS(50)) == pdTRUE) {
         s_state.pending = false;
         xSemaphoreGive(s_state.state_lock);
@@ -294,6 +389,9 @@ void session_mgr_handle_incoming(const uint8_t *data, size_t len, void *ctx)
         return;
     }
 
+    if (s_state.pending_send_us > 0U) {
+        s_state.pending_last_rtt_us = (uint64_t)esp_timer_get_time() - s_state.pending_send_us;
+    }
     s_state.response = message;
     xEventGroupSetBits(s_state.event_group, RESPONSE_READY_BIT);
     xSemaphoreGive(s_state.state_lock);
