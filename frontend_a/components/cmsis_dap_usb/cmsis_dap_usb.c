@@ -42,6 +42,8 @@ static const char *TAG = "cmsis_dap_usb";
 #define CMSIS_DAP_STACK_WARN_HWM_WORDS 256U
 #define CMSIS_DAP_PACKET_COUNT 12U
 #define CMSIS_DAP_ATOMIC_QUEUE_MAX CMSIS_DAP_PACKET_COUNT
+#define CMSIS_DAP_USB_TASK_PRIO 7U
+#define CMSIS_DAP_WORKER_TASK_PRIO 7U
 #define WDAP_WORK_CORE_ID 1
 
 #define ID_DAP_INFO 0x00U
@@ -2221,7 +2223,7 @@ esp_err_t cmsis_dap_usb_init(void)
     tusb_cfg.descriptor.string = s_string_descriptor;
     tusb_cfg.descriptor.string_count = sizeof(s_string_descriptor) / sizeof(s_string_descriptor[0]);
     tusb_cfg.task = TINYUSB_TASK_CUSTOM(TINYUSB_DEFAULT_TASK_SIZE,
-                                        TINYUSB_DEFAULT_TASK_PRIO,
+                                        CMSIS_DAP_USB_TASK_PRIO,
                                         WDAP_WORK_CORE_ID);
 #if (TUD_OPT_HIGH_SPEED)
     tusb_cfg.descriptor.high_speed_config = s_configuration_descriptor;
@@ -2232,7 +2234,7 @@ esp_err_t cmsis_dap_usb_init(void)
                                                   "cmsis_dap_usb",
                                                   CMSIS_DAP_WORKER_STACK_SIZE,
                                                   NULL,
-                                                  5,
+                                                  CMSIS_DAP_WORKER_TASK_PRIO,
                                                   &s_state.worker_task,
                                                   WDAP_WORK_CORE_ID);
     if (ok != pdPASS) {
