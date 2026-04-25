@@ -39,7 +39,8 @@ static const char *TAG = "cmsis_dap_usb";
 #define CMSIS_DAP_MAX_SWJ_CLOCK_HZ 10000000U
 #define CMSIS_DAP_WORKER_STACK_SIZE 8192U
 #define CMSIS_DAP_STACK_WARN_HWM_WORDS 256U
-#define CMSIS_DAP_PACKET_COUNT 8U
+#define CMSIS_DAP_PACKET_COUNT 12U
+#define CMSIS_DAP_ATOMIC_QUEUE_MAX CMSIS_DAP_PACKET_COUNT
 #define WDAP_WORK_CORE_ID 1
 
 #define ID_DAP_INFO 0x00U
@@ -135,7 +136,22 @@ typedef struct {
     uint32_t dp_select;
     uint32_t swj_clock_hz;
     char serial[13];
+    cmsis_dap_packet_t queued_packets[CMSIS_DAP_ATOMIC_QUEUE_MAX];
+    uint32_t atomic_queue_packet_count;
+    uint32_t atomic_queue_command_count;
+    uint32_t atomic_execute_packet_count;
+    uint32_t atomic_execute_command_count;
+    uint32_t merged_block_batch_count;
+    uint32_t merged_block_packet_count;
+    uint32_t merged_block_word_count;
+    uint32_t merged_transfer_batch_count;
+    uint32_t merged_transfer_packet_count;
+    uint32_t merged_transfer_request_count;
+    uint32_t drained_packet_count;
+    uint32_t drain_batch_count;
     bool worker_stack_warning_logged;
+    uint8_t drained_packet_peak;
+    uint8_t queued_packet_count;
     bool initialized;
 } cmsis_dap_state_t;
 
@@ -285,6 +301,8 @@ static esp_err_t transact(uint8_t cmd, const void *payload, uint16_t payload_len
 }
 
 static esp_err_t do_read_reg(bool apndp, uint8_t addr, uint32_t *value, uint8_t *response_value);
+static size_t dispatch_command(const cmsis_dap_packet_t *request, uint8_t *response);
+static size_t process_request(const cmsis_dap_packet_t *request, uint8_t *response);
 
 static uint8_t do_line_reset(void)
 {
@@ -479,6 +497,7 @@ static size_t handle_dap_info(const uint8_t *request, uint8_t *response)
 static size_t handle_dap_connect(const uint8_t *request, uint8_t *response)
 {
     const uint8_t port = (request[1] == 0U) ? DAP_PORT_SWD : request[1];
+    s_state.queued_packet_count = 0U;
     if (port == DAP_PORT_SWD) {
         s_state.debug_port = DAP_PORT_SWD;
         s_state.dp_select = 0;
@@ -497,9 +516,44 @@ static size_t handle_dap_connect(const uint8_t *request, uint8_t *response)
 static size_t handle_dap_disconnect(uint8_t *response)
 {
     session_mgr_log_stats_and_reset("dap_disconnect");
+    if (s_state.atomic_queue_packet_count > 0U || s_state.atomic_execute_packet_count > 0U) {
+        ESP_LOGI(TAG,
+                 "atomic stats reason=dap_disconnect queued_pkts=%" PRIu32 " queued_cmds=%" PRIu32 " exec_pkts=%" PRIu32 " exec_cmds=%" PRIu32,
+                 s_state.atomic_queue_packet_count,
+                 s_state.atomic_queue_command_count,
+                 s_state.atomic_execute_packet_count,
+                 s_state.atomic_execute_command_count);
+        s_state.atomic_queue_packet_count = 0U;
+        s_state.atomic_queue_command_count = 0U;
+        s_state.atomic_execute_packet_count = 0U;
+        s_state.atomic_execute_command_count = 0U;
+    }
+    if (s_state.merged_block_batch_count > 0U || s_state.drain_batch_count > 0U) {
+        ESP_LOGI(TAG,
+                 "usb batch stats reason=dap_disconnect drain_batches=%" PRIu32 " drained_pkts=%" PRIu32 " drain_peak=%u merged_blk_batches=%" PRIu32 " merged_blk_pkts=%" PRIu32 " merged_blk_words=%" PRIu32 " merged_xfer_batches=%" PRIu32 " merged_xfer_pkts=%" PRIu32 " merged_xfer_reqs=%" PRIu32,
+                 s_state.drain_batch_count,
+                 s_state.drained_packet_count,
+                 s_state.drained_packet_peak,
+                 s_state.merged_block_batch_count,
+                 s_state.merged_block_packet_count,
+                 s_state.merged_block_word_count,
+                 s_state.merged_transfer_batch_count,
+                 s_state.merged_transfer_packet_count,
+                 s_state.merged_transfer_request_count);
+        s_state.merged_block_batch_count = 0U;
+        s_state.merged_block_packet_count = 0U;
+        s_state.merged_block_word_count = 0U;
+        s_state.merged_transfer_batch_count = 0U;
+        s_state.merged_transfer_packet_count = 0U;
+        s_state.merged_transfer_request_count = 0U;
+        s_state.drained_packet_count = 0U;
+        s_state.drain_batch_count = 0U;
+        s_state.drained_packet_peak = 0U;
+    }
     s_state.debug_port = DAP_PORT_DISABLED;
     s_state.dp_select = 0;
     s_state.swj_pins = BIT(DAP_SWJ_SWCLK_TCK) | BIT(DAP_SWJ_SWDIO_TMS) | BIT(DAP_SWJ_nRESET);
+    s_state.queued_packet_count = 0U;
     response[1] = DAP_OK;
     return 2;
 }
@@ -1032,8 +1086,8 @@ static size_t handle_dap_transfer_block(const uint8_t *request, uint8_t *respons
 
 static size_t handle_dap_queue_commands(uint8_t *response)
 {
-    response[1] = 0U;
-    return 2;
+    response[0] = 0xFFU;
+    return 1U;
 }
 
 static size_t command_request_length(const uint8_t *request, size_t request_len)
@@ -1068,7 +1122,8 @@ static size_t command_request_length(const uint8_t *request, size_t request_len)
     case ID_DAP_SWD_CONFIGURE:
         return 2U;
     case ID_DAP_QUEUE_COMMANDS:
-        return 1U;
+    case ID_DAP_EXECUTE_COMMANDS:
+        return 0U;
     case ID_DAP_SWJ_SEQUENCE: {
         if (request_len < 2U) {
             return 0U;
@@ -1135,6 +1190,51 @@ static size_t command_request_length(const uint8_t *request, size_t request_len)
     }
 }
 
+static size_t execute_command_batch(cmsis_dap_transport_t transport,
+                                    uint8_t count,
+                                    const uint8_t *cursor,
+                                    size_t remaining,
+                                    uint8_t *response)
+{
+    uint8_t *dst = &response[2];
+
+    memset(response, 0, CMSIS_DAP_PACKET_SIZE);
+    response[0] = ID_DAP_EXECUTE_COMMANDS;
+    response[1] = count;
+
+    for (uint8_t i = 0; i < count; ++i) {
+        if (remaining == 0U || cursor[0] == ID_DAP_QUEUE_COMMANDS || cursor[0] == ID_DAP_EXECUTE_COMMANDS) {
+            response[0] = 0xFFU;
+            return 1U;
+        }
+
+        const size_t req_len = command_request_length(cursor, remaining);
+        if (req_len == 0U || req_len > remaining) {
+            response[0] = 0xFFU;
+            return 1U;
+        }
+
+        cmsis_dap_packet_t nested = {0};
+        nested.len = (uint16_t)req_len;
+        nested.transport = transport;
+        memcpy(nested.data, cursor, req_len);
+
+        uint8_t nested_response[CMSIS_DAP_PACKET_SIZE] = {0};
+        const size_t rsp_len = dispatch_command(&nested, nested_response);
+        if ((size_t)(dst - response) + rsp_len > CMSIS_DAP_PACKET_SIZE) {
+            response[0] = 0xFFU;
+            return 1U;
+        }
+
+        memcpy(dst, nested_response, rsp_len);
+        dst += rsp_len;
+        cursor += req_len;
+        remaining -= req_len;
+    }
+
+    return (size_t)(dst - response);
+}
+
 static size_t dispatch_command(const cmsis_dap_packet_t *request, uint8_t *response)
 {
     switch (request->data[0]) {
@@ -1181,39 +1281,501 @@ static size_t dispatch_command(const cmsis_dap_packet_t *request, uint8_t *respo
 
 static size_t handle_dap_execute_commands(const cmsis_dap_packet_t *request, uint8_t *response)
 {
-    const uint8_t count = request->data[1];
+    const uint8_t count = request->len > 1U ? request->data[1] : 0U;
     const uint8_t *cursor = &request->data[2];
-    size_t remaining = (request->len > 2U) ? (size_t)(request->len - 2U) : 0U;
-    uint8_t *dst = &response[2];
+    const size_t remaining = (request->len > 2U) ? (size_t)(request->len - 2U) : 0U;
 
-    response[1] = count;
+    ++s_state.atomic_execute_packet_count;
+    s_state.atomic_execute_command_count += count;
 
-    for (uint8_t i = 0; i < count; ++i) {
-        const size_t req_len = command_request_length(cursor, remaining);
-        if (req_len == 0U || req_len > remaining) {
-            response[0] = 0xFFU;
-            return 1U;
-        }
+    return execute_command_batch(request->transport, count, cursor, remaining, response);
+}
 
-        cmsis_dap_packet_t nested = {0};
-        nested.len = (uint16_t)req_len;
-        nested.transport = request->transport;
-        memcpy(nested.data, cursor, req_len);
-
-        uint8_t nested_response[CMSIS_DAP_PACKET_SIZE] = {0};
-        const size_t rsp_len = dispatch_command(&nested, nested_response);
-        if ((size_t)(dst - response) + rsp_len > CMSIS_DAP_PACKET_SIZE) {
-            response[0] = 0xFFU;
-            return 1U;
-        }
-
-        memcpy(dst, nested_response, rsp_len);
-        dst += rsp_len;
-        cursor += req_len;
-        remaining -= req_len;
+static bool queue_atomic_packet(const cmsis_dap_packet_t *request)
+{
+    if (request == NULL || request->data[0] != ID_DAP_QUEUE_COMMANDS || request->len < 2U) {
+        return false;
+    }
+    if (s_state.queued_packet_count >= CMSIS_DAP_ATOMIC_QUEUE_MAX) {
+        return false;
     }
 
-    return (size_t)(dst - response);
+    s_state.queued_packets[s_state.queued_packet_count++] = *request;
+    ++s_state.atomic_queue_packet_count;
+    s_state.atomic_queue_command_count += request->data[1];
+    return true;
+}
+
+static void send_response_packet(cmsis_dap_transport_t transport, const uint8_t *response, size_t response_len)
+{
+    if (response == NULL || response_len == 0U) {
+        return;
+    }
+
+    if (transport == CMSIS_DAP_TRANSPORT_VENDOR) {
+        const uint16_t bulk_send_len = (uint16_t)response_len;
+        while (!tud_mounted() || !tud_vendor_n_mounted(0) || tud_vendor_n_write_available(0) < bulk_send_len) {
+            vTaskDelay(pdMS_TO_TICKS(1));
+        }
+        if (tud_vendor_n_write(0, response, bulk_send_len) != bulk_send_len) {
+            ESP_LOGW(TAG, "failed to queue vendor response cmd=0x%02x", response[0]);
+            return;
+        }
+
+        uint32_t flushed = 0;
+        for (int retry = 0; retry < 100 && flushed == 0U; ++retry) {
+            flushed = tud_vendor_n_write_flush(0);
+            if (flushed == 0U) {
+                vTaskDelay(pdMS_TO_TICKS(1));
+            }
+        }
+        if (flushed == 0U) {
+            ESP_LOGW(TAG, "failed to flush vendor response cmd=0x%02x", response[0]);
+        }
+        return;
+    }
+
+    while (!tud_mounted() || !tud_hid_ready()) {
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
+    if (!tud_hid_report(0, response, CMSIS_DAP_HID_REPORT_SIZE)) {
+        ESP_LOGW(TAG, "failed to send HID response cmd=0x%02x", response[0]);
+    }
+}
+
+static uint16_t transfer_block_request_count_from_packet(const cmsis_dap_packet_t *packet)
+{
+    return (uint16_t)packet->data[2] | ((uint16_t)packet->data[3] << 8);
+}
+
+static bool is_mergeable_ap_block_write_packet(const cmsis_dap_packet_t *packet, uint8_t *request_value_out)
+{
+    if (packet == NULL || packet->len < 5U || packet->data[0] != ID_DAP_TRANSFER_BLOCK) {
+        return false;
+    }
+
+    const uint8_t request_value = packet->data[4];
+    const bool apndp = (request_value & DAP_TRANSFER_APNDP) != 0U;
+    const bool read = (request_value & DAP_TRANSFER_RNW) != 0U;
+    const uint16_t request_count = transfer_block_request_count_from_packet(packet);
+    const size_t expected_len = 5U + ((size_t)request_count * sizeof(uint32_t));
+
+    if (!apndp || read || request_count == 0U || expected_len > packet->len) {
+        return false;
+    }
+
+    if (request_value_out != NULL) {
+        *request_value_out = request_value;
+    }
+    return true;
+}
+
+static bool is_mergeable_ap_block_read_packet(const cmsis_dap_packet_t *packet, uint8_t *request_value_out)
+{
+    if (packet == NULL || packet->len < 5U || packet->data[0] != ID_DAP_TRANSFER_BLOCK) {
+        return false;
+    }
+
+    const uint8_t request_value = packet->data[4];
+    const bool apndp = (request_value & DAP_TRANSFER_APNDP) != 0U;
+    const bool read = (request_value & DAP_TRANSFER_RNW) != 0U;
+    const uint16_t request_count = transfer_block_request_count_from_packet(packet);
+
+    if (!apndp || !read || request_count == 0U) {
+        return false;
+    }
+
+    if (request_value_out != NULL) {
+        *request_value_out = request_value;
+    }
+    return true;
+}
+
+static size_t format_transfer_block_response(uint16_t completed, uint8_t response_value, uint8_t *response)
+{
+    memset(response, 0, CMSIS_DAP_PACKET_SIZE);
+    response[0] = ID_DAP_TRANSFER_BLOCK;
+    response[1] = (uint8_t)(completed >> 0);
+    response[2] = (uint8_t)(completed >> 8);
+    response[3] = response_value;
+    return 4U;
+}
+
+static size_t format_transfer_block_read_response(uint16_t completed,
+                                                  uint8_t response_value,
+                                                  const uint8_t **read_cursor,
+                                                  uint8_t *response)
+{
+    const size_t response_len = format_transfer_block_response(completed, response_value, response);
+    const size_t read_bytes = (size_t)completed * sizeof(uint32_t);
+    if (read_bytes > 0U && read_cursor != NULL && *read_cursor != NULL) {
+        memcpy(&response[4], *read_cursor, read_bytes);
+        *read_cursor += read_bytes;
+    }
+    return response_len + read_bytes;
+}
+
+static bool is_mergeable_transfer_packet(const cmsis_dap_packet_t *packet, uint8_t *request_count_out, size_t *request_len_out)
+{
+    if (packet == NULL || packet->len < 3U || packet->data[0] != ID_DAP_TRANSFER) {
+        return false;
+    }
+
+    const uint8_t request_count = packet->data[2];
+    const size_t request_len = command_request_length(packet->data, packet->len);
+    if (request_count == 0U || request_len == 0U || request_len > packet->len ||
+        !is_safe_batched_transfer_request(packet->data, request_count)) {
+        return false;
+    }
+
+    if (request_count_out != NULL) {
+        *request_count_out = request_count;
+    }
+    if (request_len_out != NULL) {
+        *request_len_out = request_len;
+    }
+    return true;
+}
+
+static bool append_transfer_packet_to_wdap(const cmsis_dap_packet_t *packet,
+                                           uint8_t *wdap_payload,
+                                           uint16_t *wdap_len,
+                                           uint32_t *preview_select,
+                                           uint8_t *total_request_count)
+{
+    const uint8_t request_count = packet->data[2];
+    const uint8_t *cursor = &packet->data[3];
+
+    if ((uint16_t)(*total_request_count + request_count) > UINT8_MAX) {
+        return false;
+    }
+
+    for (uint8_t i = 0; i < request_count; ++i) {
+        const uint8_t request_value = *cursor++;
+        const bool apndp = (request_value & DAP_TRANSFER_APNDP) != 0U;
+        const bool read = (request_value & DAP_TRANSFER_RNW) != 0U;
+        const bool has_match_value = (request_value & DAP_TRANSFER_MATCH_VALUE) != 0U;
+        const uint8_t addr = request_value & 0x0CU;
+        const uint8_t resolved_addr = apndp ? (uint8_t)((*preview_select & 0xF0U) | addr) : addr;
+        const uint16_t needed = (uint16_t)(2U + (((read && has_match_value) || !read) ? sizeof(uint32_t) : 0U));
+
+        if ((uint16_t)(*wdap_len + needed) > WDAP_MAX_PAYLOAD) {
+            return false;
+        }
+
+        wdap_payload[(*wdap_len)++] = request_value;
+        wdap_payload[(*wdap_len)++] = resolved_addr;
+
+        if ((read && has_match_value) || !read) {
+            const uint32_t value = read_u32_le(cursor);
+            cursor += sizeof(uint32_t);
+            write_u32_le(&wdap_payload[*wdap_len], value);
+            *wdap_len = (uint16_t)(*wdap_len + sizeof(uint32_t));
+            if (!apndp && !read && addr == 0x08U && (request_value & DAP_TRANSFER_MATCH_MASK) == 0U) {
+                *preview_select = value;
+            }
+        }
+    }
+
+    *total_request_count = (uint8_t)(*total_request_count + request_count);
+    return true;
+}
+
+static size_t format_transfer_response_from_sequence(const cmsis_dap_packet_t *packet,
+                                                     uint8_t completed,
+                                                     uint8_t response_value,
+                                                     const uint8_t **read_cursor,
+                                                     uint8_t *response)
+{
+    memset(response, 0, CMSIS_DAP_PACKET_SIZE);
+    response[0] = ID_DAP_TRANSFER;
+    response[1] = completed;
+    response[2] = response_value;
+
+    const uint8_t read_count = count_read_transfers(packet->data, completed);
+    const size_t read_bytes = (size_t)read_count * sizeof(uint32_t);
+    if (read_bytes > 0U && read_cursor != NULL && *read_cursor != NULL) {
+        memcpy(&response[3], *read_cursor, read_bytes);
+        *read_cursor += read_bytes;
+    }
+
+    update_transfer_state_after_completed(packet->data, completed);
+    return 3U + read_bytes;
+}
+
+static void process_merged_transfer_packets(const cmsis_dap_packet_t *packets, uint8_t packet_count)
+{
+    uint8_t wdap_payload[WDAP_MAX_PAYLOAD] = {0};
+    uint16_t wdap_len = sizeof(wdap_transfer_sequence_request_t);
+    uint32_t preview_select = s_state.dp_select;
+    uint8_t total_request_count = 0U;
+    uint8_t packet_request_counts[CMSIS_DAP_PACKET_COUNT] = {0};
+    uint8_t packet_completed[CMSIS_DAP_PACKET_COUNT] = {0};
+    uint8_t packet_response_value[CMSIS_DAP_PACKET_COUNT] = {0};
+    bool packet_ready[CMSIS_DAP_PACKET_COUNT] = {0};
+    wdap_transfer_sequence_request_t *hdr = (wdap_transfer_sequence_request_t *)wdap_payload;
+
+    hdr->count = 0U;
+    hdr->retry_count = s_state.retry_count;
+    hdr->match_retry = s_state.match_retry;
+    hdr->match_mask = s_state.match_mask;
+
+    for (uint8_t i = 0; i < packet_count; ++i) {
+        packet_request_counts[i] = packets[i].data[2];
+        if (!append_transfer_packet_to_wdap(&packets[i], wdap_payload, &wdap_len, &preview_select, &total_request_count)) {
+            for (uint8_t j = 0; j < packet_count; ++j) {
+                uint8_t response[CMSIS_DAP_PACKET_SIZE] = {0};
+                const size_t response_len = process_request(&packets[j], response);
+                send_response_packet(packets[j].transport, response, response_len);
+            }
+            return;
+        }
+    }
+    hdr->count = total_request_count;
+
+    wdap_message_t wdap_resp = {0};
+    const esp_err_t err = transact(WDAP_CMD_SWD_TRANSFER_SEQUENCE, wdap_payload, wdap_len, &wdap_resp);
+    uint8_t completed_total = 0U;
+    uint8_t response_value = DAP_TRANSFER_ERROR;
+
+    if (err == ESP_OK && wdap_resp.payload_len >= sizeof(wdap_transfer_sequence_response_t)) {
+        const wdap_transfer_sequence_response_t *seq_resp = (const wdap_transfer_sequence_response_t *)wdap_resp.payload;
+        completed_total = seq_resp->completed;
+        response_value = seq_resp->result_flags;
+    } else {
+        response_value = wdap_ack_to_dap(wdap_resp.ack, err, wdap_resp.status);
+    }
+
+    uint8_t remaining_completed = completed_total;
+    uint8_t full_handled = 0U;
+    for (; full_handled < packet_count; ++full_handled) {
+        if (remaining_completed < packet_request_counts[full_handled]) {
+            break;
+        }
+        packet_completed[full_handled] = packet_request_counts[full_handled];
+        packet_response_value[full_handled] = DAP_TRANSFER_OK;
+        packet_ready[full_handled] = true;
+        remaining_completed = (uint8_t)(remaining_completed - packet_request_counts[full_handled]);
+    }
+
+    if (response_value != DAP_TRANSFER_OK || completed_total < total_request_count) {
+        uint8_t failure_index = full_handled;
+        if (failure_index >= packet_count) {
+            failure_index = (uint8_t)(packet_count - 1U);
+            packet_completed[failure_index] = packet_request_counts[failure_index];
+        } else {
+            packet_completed[failure_index] = remaining_completed;
+        }
+        packet_response_value[failure_index] = response_value;
+        packet_ready[failure_index] = true;
+    }
+
+    const uint8_t *read_cursor = (wdap_resp.payload_len > sizeof(wdap_transfer_sequence_response_t))
+                                     ? &wdap_resp.payload[sizeof(wdap_transfer_sequence_response_t)]
+                                     : NULL;
+
+    for (uint8_t i = 0; i < packet_count; ++i) {
+        uint8_t response[CMSIS_DAP_PACKET_SIZE] = {0};
+        size_t response_len = 0U;
+
+        if (packet_ready[i]) {
+            response_len = format_transfer_response_from_sequence(&packets[i],
+                                                                  packet_completed[i],
+                                                                  packet_response_value[i],
+                                                                  &read_cursor,
+                                                                  response);
+        } else {
+            response_len = process_request(&packets[i], response);
+        }
+        send_response_packet(packets[i].transport, response, response_len);
+    }
+
+    ++s_state.merged_transfer_batch_count;
+    s_state.merged_transfer_packet_count += packet_count;
+    s_state.merged_transfer_request_count += total_request_count;
+}
+
+static void process_merged_ap_block_write_packets(const cmsis_dap_packet_t *packets, uint8_t packet_count)
+{
+    const uint8_t request_value = packets[0].data[4];
+    const uint8_t addr = request_value & 0x0CU;
+    uint8_t wdap_payload[WDAP_MAX_PAYLOAD] = {0};
+    uint16_t total_count = 0U;
+    uint16_t wdap_payload_len = sizeof(wdap_block_request_t);
+    uint16_t packet_counts[CMSIS_DAP_PACKET_COUNT] = {0};
+    uint16_t packet_completed[CMSIS_DAP_PACKET_COUNT] = {0};
+    uint8_t packet_response_value[CMSIS_DAP_PACKET_COUNT] = {0};
+    bool packet_ready[CMSIS_DAP_PACKET_COUNT] = {0};
+
+    wdap_payload[0] = (uint8_t)(0x01U | (addr & 0x0CU));
+
+    for (uint8_t i = 0; i < packet_count; ++i) {
+        const uint16_t request_count = transfer_block_request_count_from_packet(&packets[i]);
+        const size_t data_len = (size_t)request_count * sizeof(uint32_t);
+        packet_counts[i] = request_count;
+        memcpy(&wdap_payload[wdap_payload_len], &packets[i].data[5], data_len);
+        wdap_payload_len = (uint16_t)(wdap_payload_len + data_len);
+        total_count = (uint16_t)(total_count + request_count);
+    }
+
+    wdap_payload[1] = (uint8_t)(total_count >> 0);
+    wdap_payload[2] = (uint8_t)(total_count >> 8);
+
+    wdap_message_t wdap_resp = {0};
+    const esp_err_t err = transact(WDAP_CMD_SWD_WRITE_BLOCK, wdap_payload, wdap_payload_len, &wdap_resp);
+    uint16_t completed_total = 0U;
+    uint8_t response_value = DAP_TRANSFER_ERROR;
+
+    if (err == ESP_OK && wdap_resp.payload_len >= sizeof(wdap_block_response_t)) {
+        const wdap_block_response_t *block_resp = (const wdap_block_response_t *)wdap_resp.payload;
+        completed_total = (uint16_t)block_resp->completed_lo | ((uint16_t)block_resp->completed_hi << 8);
+        response_value = wdap_ack_to_dap(block_resp->ack, ESP_OK, WDAP_STATUS_OK);
+    } else {
+        response_value = wdap_ack_to_dap(wdap_resp.ack, err, wdap_resp.status);
+    }
+
+    uint16_t remaining_completed = completed_total;
+    uint8_t full_handled = 0U;
+    for (; full_handled < packet_count; ++full_handled) {
+        if (remaining_completed < packet_counts[full_handled]) {
+            break;
+        }
+        packet_completed[full_handled] = packet_counts[full_handled];
+        packet_response_value[full_handled] = DAP_TRANSFER_OK;
+        packet_ready[full_handled] = true;
+        remaining_completed = (uint16_t)(remaining_completed - packet_counts[full_handled]);
+    }
+
+    if (response_value != DAP_TRANSFER_OK || completed_total < total_count) {
+        uint8_t failure_index = full_handled;
+        if (failure_index >= packet_count) {
+            failure_index = (uint8_t)(packet_count - 1U);
+            packet_completed[failure_index] = packet_counts[failure_index];
+        } else {
+            packet_completed[failure_index] = remaining_completed;
+        }
+        packet_response_value[failure_index] = response_value;
+        packet_ready[failure_index] = true;
+    }
+
+    for (uint8_t i = 0; i < packet_count; ++i) {
+        uint8_t response[CMSIS_DAP_PACKET_SIZE] = {0};
+        size_t response_len = 0U;
+
+        if (packet_ready[i]) {
+            response_len = format_transfer_block_response(packet_completed[i], packet_response_value[i], response);
+        } else {
+            response_len = process_request(&packets[i], response);
+        }
+        send_response_packet(packets[i].transport, response, response_len);
+    }
+
+    ++s_state.merged_block_batch_count;
+    s_state.merged_block_packet_count += packet_count;
+    s_state.merged_block_word_count += total_count;
+}
+
+static void process_merged_ap_block_read_packets(const cmsis_dap_packet_t *packets, uint8_t packet_count)
+{
+    const uint8_t request_value = packets[0].data[4];
+    const uint8_t addr = request_value & 0x0CU;
+    uint8_t wdap_payload[WDAP_MAX_PAYLOAD] = {0};
+    uint16_t total_count = 0U;
+    uint16_t packet_counts[CMSIS_DAP_PACKET_COUNT] = {0};
+    uint16_t packet_completed[CMSIS_DAP_PACKET_COUNT] = {0};
+    uint8_t packet_response_value[CMSIS_DAP_PACKET_COUNT] = {0};
+    bool packet_ready[CMSIS_DAP_PACKET_COUNT] = {0};
+
+    wdap_payload[0] = (uint8_t)(0x01U | (addr & 0x0CU));
+
+    for (uint8_t i = 0; i < packet_count; ++i) {
+        const uint16_t request_count = transfer_block_request_count_from_packet(&packets[i]);
+        packet_counts[i] = request_count;
+        total_count = (uint16_t)(total_count + request_count);
+    }
+
+    wdap_payload[1] = (uint8_t)(total_count >> 0);
+    wdap_payload[2] = (uint8_t)(total_count >> 8);
+
+    wdap_message_t wdap_resp = {0};
+    const esp_err_t err = transact(WDAP_CMD_SWD_READ_BLOCK, wdap_payload, sizeof(wdap_block_request_t), &wdap_resp);
+    uint16_t completed_total = 0U;
+    uint8_t response_value = DAP_TRANSFER_ERROR;
+
+    if (err == ESP_OK && wdap_resp.payload_len >= sizeof(wdap_block_response_t)) {
+        const wdap_block_response_t *block_resp = (const wdap_block_response_t *)wdap_resp.payload;
+        completed_total = (uint16_t)block_resp->completed_lo | ((uint16_t)block_resp->completed_hi << 8);
+        response_value = wdap_ack_to_dap(block_resp->ack, ESP_OK, WDAP_STATUS_OK);
+    } else {
+        response_value = wdap_ack_to_dap(wdap_resp.ack, err, wdap_resp.status);
+    }
+
+    uint16_t remaining_completed = completed_total;
+    uint8_t full_handled = 0U;
+    for (; full_handled < packet_count; ++full_handled) {
+        if (remaining_completed < packet_counts[full_handled]) {
+            break;
+        }
+        packet_completed[full_handled] = packet_counts[full_handled];
+        packet_response_value[full_handled] = DAP_TRANSFER_OK;
+        packet_ready[full_handled] = true;
+        remaining_completed = (uint16_t)(remaining_completed - packet_counts[full_handled]);
+    }
+
+    if (response_value != DAP_TRANSFER_OK || completed_total < total_count) {
+        uint8_t failure_index = full_handled;
+        if (failure_index >= packet_count) {
+            failure_index = (uint8_t)(packet_count - 1U);
+            packet_completed[failure_index] = packet_counts[failure_index];
+        } else {
+            packet_completed[failure_index] = remaining_completed;
+        }
+        packet_response_value[failure_index] = response_value;
+        packet_ready[failure_index] = true;
+    }
+
+    const uint8_t *read_cursor = (wdap_resp.payload_len > sizeof(wdap_block_response_t))
+                                     ? &wdap_resp.payload[sizeof(wdap_block_response_t)]
+                                     : NULL;
+
+    for (uint8_t i = 0; i < packet_count; ++i) {
+        uint8_t response[CMSIS_DAP_PACKET_SIZE] = {0};
+        size_t response_len = 0U;
+
+        if (packet_ready[i]) {
+            response_len = format_transfer_block_read_response(packet_completed[i],
+                                                               packet_response_value[i],
+                                                               &read_cursor,
+                                                               response);
+        } else {
+            response_len = process_request(&packets[i], response);
+        }
+        send_response_packet(packets[i].transport, response, response_len);
+    }
+
+    ++s_state.merged_block_batch_count;
+    s_state.merged_block_packet_count += packet_count;
+    s_state.merged_block_word_count += total_count;
+}
+
+static void flush_queued_packets(void)
+{
+    const uint8_t queued_packet_count = s_state.queued_packet_count;
+
+    for (uint8_t i = 0; i < queued_packet_count; ++i) {
+        const cmsis_dap_packet_t *queued = &s_state.queued_packets[i];
+        const uint8_t count = queued->len > 1U ? queued->data[1] : 0U;
+        const uint8_t *cursor = &queued->data[2];
+        const size_t remaining = queued->len > 2U ? (size_t)(queued->len - 2U) : 0U;
+        uint8_t response[CMSIS_DAP_PACKET_SIZE] = {0};
+        const size_t response_len = execute_command_batch(queued->transport, count, cursor, remaining, response);
+        send_response_packet(queued->transport, response, response_len);
+    }
+
+    if (queued_packet_count > 0U) {
+        ESP_LOGI(TAG, "flushed %u queued atomic packet(s)", queued_packet_count);
+    }
+    s_state.queued_packet_count = 0U;
 }
 
 static const char *dap_cmd_name(uint8_t cmd)
@@ -1270,6 +1832,7 @@ static void cmsis_dap_worker_task(void *arg)
     (void)arg;
 
     cmsis_dap_packet_t packet;
+    cmsis_dap_packet_t packet_batch[CMSIS_DAP_PACKET_COUNT];
     uint8_t response[CMSIS_DAP_PACKET_SIZE];
 
     while (true) {
@@ -1277,41 +1840,147 @@ static void cmsis_dap_worker_task(void *arg)
             continue;
         }
 
-        const size_t response_len = process_request(&packet, response);
+        uint8_t batch_count = 1U;
+        packet_batch[0] = packet;
+        while (batch_count < CMSIS_DAP_PACKET_COUNT &&
+               xQueueReceive(s_state.rx_queue, &packet_batch[batch_count], 0) == pdTRUE) {
+            ++batch_count;
+        }
+        if (batch_count > 1U) {
+            ++s_state.drain_batch_count;
+            s_state.drained_packet_count += (uint32_t)(batch_count - 1U);
+            if (batch_count > s_state.drained_packet_peak) {
+                s_state.drained_packet_peak = batch_count;
+            }
+        }
+
+        for (uint8_t index = 0U; index < batch_count; ++index) {
+            const cmsis_dap_packet_t *current = &packet_batch[index];
+
+            if (current->data[0] == ID_DAP_QUEUE_COMMANDS) {
+                if (!queue_atomic_packet(current)) {
+                    memset(response, 0, sizeof(response));
+                    response[0] = 0xFFU;
+                    send_response_packet(current->transport, response, 1U);
+                }
+                continue;
+            }
+
+            if (s_state.queued_packet_count > 0U) {
+                flush_queued_packets();
+            }
+
+            uint8_t transfer_request_count = 0U;
+            size_t transfer_request_len = 0U;
+            if (s_state.debug_port == DAP_PORT_SWD &&
+                is_mergeable_transfer_packet(current, &transfer_request_count, &transfer_request_len)) {
+                uint8_t merged_count = 1U;
+                uint8_t total_request_count = transfer_request_count;
+                size_t wdap_payload_len = sizeof(wdap_transfer_sequence_request_t) +
+                                          (transfer_request_len - 3U) +
+                                          transfer_request_count;
+
+                while ((uint8_t)(index + merged_count) < batch_count) {
+                    const cmsis_dap_packet_t *next = &packet_batch[index + merged_count];
+                    uint8_t next_request_count = 0U;
+                    size_t next_request_len = 0U;
+                    if (next->transport != current->transport ||
+                        !is_mergeable_transfer_packet(next, &next_request_count, &next_request_len) ||
+                        (uint16_t)(total_request_count + next_request_count) > UINT8_MAX) {
+                        break;
+                    }
+
+                    const size_t next_added_len = (next_request_len - 3U) + next_request_count;
+                    if (wdap_payload_len + next_added_len > WDAP_MAX_PAYLOAD) {
+                        break;
+                    }
+
+                    total_request_count = (uint8_t)(total_request_count + next_request_count);
+                    wdap_payload_len += next_added_len;
+                    ++merged_count;
+                }
+
+                if (merged_count > 1U) {
+                    process_merged_transfer_packets(&packet_batch[index], merged_count);
+                    index = (uint8_t)(index + merged_count - 1U);
+                    continue;
+                }
+            }
+
+            uint8_t request_value = 0U;
+            if (s_state.debug_port == DAP_PORT_SWD &&
+                is_mergeable_ap_block_read_packet(current, &request_value)) {
+                uint8_t merged_count = 1U;
+                uint16_t total_count = transfer_block_request_count_from_packet(current);
+
+                while ((uint8_t)(index + merged_count) < batch_count) {
+                    const cmsis_dap_packet_t *next = &packet_batch[index + merged_count];
+                    uint8_t next_request_value = 0U;
+                    if (next->transport != current->transport ||
+                        !is_mergeable_ap_block_read_packet(next, &next_request_value) ||
+                        next_request_value != request_value) {
+                        break;
+                    }
+
+                    const uint16_t next_count = transfer_block_request_count_from_packet(next);
+                    const size_t merged_response_len = sizeof(wdap_block_response_t) +
+                                                       ((size_t)total_count + next_count) * sizeof(uint32_t);
+                    if (merged_response_len > WDAP_MAX_PAYLOAD) {
+                        break;
+                    }
+
+                    total_count = (uint16_t)(total_count + next_count);
+                    ++merged_count;
+                }
+
+                if (merged_count > 1U) {
+                    process_merged_ap_block_read_packets(&packet_batch[index], merged_count);
+                    index = (uint8_t)(index + merged_count - 1U);
+                    continue;
+                }
+            }
+
+            request_value = 0U;
+            if (s_state.debug_port == DAP_PORT_SWD &&
+                is_mergeable_ap_block_write_packet(current, &request_value)) {
+                uint8_t merged_count = 1U;
+                uint16_t total_count = transfer_block_request_count_from_packet(current);
+
+                while ((uint8_t)(index + merged_count) < batch_count) {
+                    const cmsis_dap_packet_t *next = &packet_batch[index + merged_count];
+                    uint8_t next_request_value = 0U;
+                    if (next->transport != current->transport ||
+                        !is_mergeable_ap_block_write_packet(next, &next_request_value) ||
+                        next_request_value != request_value) {
+                        break;
+                    }
+
+                    const uint16_t next_count = transfer_block_request_count_from_packet(next);
+                    const size_t merged_payload_len = sizeof(wdap_block_request_t) +
+                                                      ((size_t)total_count + next_count) * sizeof(uint32_t);
+                    if (merged_payload_len > WDAP_MAX_PAYLOAD) {
+                        break;
+                    }
+
+                    total_count = (uint16_t)(total_count + next_count);
+                    ++merged_count;
+                }
+
+                if (merged_count > 1U) {
+                    process_merged_ap_block_write_packets(&packet_batch[index], merged_count);
+                    index = (uint8_t)(index + merged_count - 1U);
+                    continue;
+                }
+            }
+
+            const size_t response_len = process_request(current, response);
+            send_response_packet(current->transport, response, response_len);
+        }
+
         const UBaseType_t stack_hwm = uxTaskGetStackHighWaterMark(NULL);
         if (!s_state.worker_stack_warning_logged && stack_hwm < CMSIS_DAP_STACK_WARN_HWM_WORDS) {
             s_state.worker_stack_warning_logged = true;
             ESP_LOGW(TAG, "cmsis_dap worker stack is running low: hwm=%" PRIu32 " words", (uint32_t)stack_hwm);
-        }
-        const uint16_t hid_send_len = CMSIS_DAP_HID_REPORT_SIZE;
-        const uint16_t bulk_send_len = (uint16_t)response_len;
-
-        if (packet.transport == CMSIS_DAP_TRANSPORT_VENDOR) {
-            while (!tud_mounted() || !tud_vendor_n_mounted(0) || tud_vendor_n_write_available(0) < bulk_send_len) {
-                vTaskDelay(pdMS_TO_TICKS(1));
-            }
-            if (tud_vendor_n_write(0, response, bulk_send_len) != bulk_send_len) {
-                ESP_LOGW(TAG, "failed to queue vendor response cmd=0x%02x", response[0]);
-                continue;
-            }
-            uint32_t flushed = 0;
-            for (int retry = 0; retry < 100 && flushed == 0U; ++retry) {
-                flushed = tud_vendor_n_write_flush(0);
-                if (flushed == 0U) {
-                    vTaskDelay(pdMS_TO_TICKS(1));
-                }
-            }
-            if (flushed == 0U) {
-                ESP_LOGW(TAG, "failed to flush vendor response cmd=0x%02x", response[0]);
-            }
-            continue;
-        }
-
-        while (!tud_mounted() || !tud_hid_ready()) {
-            vTaskDelay(pdMS_TO_TICKS(1));
-        }
-        if (!tud_hid_report(0, response, hid_send_len)) {
-            ESP_LOGW(TAG, "failed to send HID response cmd=0x%02x", response[0]);
         }
     }
 }
