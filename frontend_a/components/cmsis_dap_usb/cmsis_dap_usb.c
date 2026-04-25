@@ -12,6 +12,7 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_rom_sys.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
@@ -147,6 +148,24 @@ typedef struct {
     uint32_t merged_transfer_batch_count;
     uint32_t merged_transfer_packet_count;
     uint32_t merged_transfer_request_count;
+    uint32_t vendor_response_count;
+    uint32_t vendor_response_cmd06_count;
+    uint32_t vendor_response_bytes;
+    uint32_t vendor_wait_ready_loops_total;
+    uint32_t vendor_wait_ready_loops_max;
+    uint32_t vendor_wait_ready_cmd06_loops_total;
+    uint64_t vendor_wait_ready_us_total;
+    uint64_t vendor_wait_ready_us_max;
+    uint64_t vendor_wait_ready_cmd06_us_total;
+    uint32_t vendor_flush_calls;
+    uint32_t vendor_flush_calls_cmd06;
+    uint32_t vendor_flush_zero_total;
+    uint32_t vendor_flush_zero_cmd06_total;
+    uint32_t vendor_flush_fail_count;
+    uint32_t vendor_flush_fail_cmd06_count;
+    uint64_t vendor_flush_us_total;
+    uint64_t vendor_flush_us_max;
+    uint64_t vendor_flush_cmd06_us_total;
     uint32_t drained_packet_count;
     uint32_t drain_batch_count;
     bool worker_stack_warning_logged;
@@ -549,6 +568,52 @@ static size_t handle_dap_disconnect(uint8_t *response)
         s_state.drained_packet_count = 0U;
         s_state.drain_batch_count = 0U;
         s_state.drained_packet_peak = 0U;
+    }
+    if (s_state.vendor_response_count > 0U) {
+        const uint64_t avg_wait_us = s_state.vendor_response_count > 0U
+                                         ? (s_state.vendor_wait_ready_us_total / s_state.vendor_response_count)
+                                         : 0U;
+        const uint64_t avg_flush_us = s_state.vendor_flush_calls > 0U
+                                          ? (s_state.vendor_flush_us_total / s_state.vendor_flush_calls)
+                                          : 0U;
+        ESP_LOGI(TAG,
+                 "vendor tx stats reason=dap_disconnect rsp=%" PRIu32 " rsp_cmd06=%" PRIu32 " rsp_bytes=%" PRIu32 " wait_loops_total=%" PRIu32 " wait_loops_max=%" PRIu32 " wait_cmd06_loops=%" PRIu32 " wait_us_avg=%" PRIu64 " wait_us_max=%" PRIu64 " wait_cmd06_us=%" PRIu64 " flush_calls=%" PRIu32 " flush_cmd06=%" PRIu32 " flush_zero_total=%" PRIu32 " flush_zero_cmd06=%" PRIu32 " flush_fail=%" PRIu32 " flush_fail_cmd06=%" PRIu32 " flush_us_avg=%" PRIu64 " flush_us_max=%" PRIu64 " flush_cmd06_us=%" PRIu64,
+                 s_state.vendor_response_count,
+                 s_state.vendor_response_cmd06_count,
+                 s_state.vendor_response_bytes,
+                 s_state.vendor_wait_ready_loops_total,
+                 s_state.vendor_wait_ready_loops_max,
+                 s_state.vendor_wait_ready_cmd06_loops_total,
+                 avg_wait_us,
+                 s_state.vendor_wait_ready_us_max,
+                 s_state.vendor_wait_ready_cmd06_us_total,
+                 s_state.vendor_flush_calls,
+                 s_state.vendor_flush_calls_cmd06,
+                 s_state.vendor_flush_zero_total,
+                 s_state.vendor_flush_zero_cmd06_total,
+                 s_state.vendor_flush_fail_count,
+                 s_state.vendor_flush_fail_cmd06_count,
+                 avg_flush_us,
+                 s_state.vendor_flush_us_max,
+                 s_state.vendor_flush_cmd06_us_total);
+        s_state.vendor_response_count = 0U;
+        s_state.vendor_response_cmd06_count = 0U;
+        s_state.vendor_response_bytes = 0U;
+        s_state.vendor_wait_ready_loops_total = 0U;
+        s_state.vendor_wait_ready_loops_max = 0U;
+        s_state.vendor_wait_ready_cmd06_loops_total = 0U;
+        s_state.vendor_wait_ready_us_total = 0U;
+        s_state.vendor_wait_ready_us_max = 0U;
+        s_state.vendor_wait_ready_cmd06_us_total = 0U;
+        s_state.vendor_flush_calls = 0U;
+        s_state.vendor_flush_calls_cmd06 = 0U;
+        s_state.vendor_flush_zero_total = 0U;
+        s_state.vendor_flush_zero_cmd06_total = 0U;
+        s_state.vendor_flush_fail_count = 0U;
+        s_state.vendor_flush_fail_cmd06_count = 0U;
+        s_state.vendor_flush_us_total = 0U;
+        s_state.vendor_flush_us_max = 0U;
+        s_state.vendor_flush_cmd06_us_total = 0U;
     }
     s_state.debug_port = DAP_PORT_DISABLED;
     s_state.dp_select = 0;
@@ -1313,23 +1378,64 @@ static void send_response_packet(cmsis_dap_transport_t transport, const uint8_t 
     }
 
     if (transport == CMSIS_DAP_TRANSPORT_VENDOR) {
+        const bool is_cmd06 = response[0] == ID_DAP_TRANSFER_BLOCK;
         const uint16_t bulk_send_len = (uint16_t)response_len;
+        const int64_t wait_start_us = esp_timer_get_time();
+        uint32_t ready_loops = 0U;
         while (!tud_mounted() || !tud_vendor_n_mounted(0) || tud_vendor_n_write_available(0) < bulk_send_len) {
+            ++ready_loops;
             vTaskDelay(pdMS_TO_TICKS(1));
+        }
+        const uint64_t wait_us = (uint64_t)(esp_timer_get_time() - wait_start_us);
+        ++s_state.vendor_response_count;
+        s_state.vendor_response_bytes += bulk_send_len;
+        s_state.vendor_wait_ready_loops_total += ready_loops;
+        if (ready_loops > s_state.vendor_wait_ready_loops_max) {
+            s_state.vendor_wait_ready_loops_max = ready_loops;
+        }
+        s_state.vendor_wait_ready_us_total += wait_us;
+        if (wait_us > s_state.vendor_wait_ready_us_max) {
+            s_state.vendor_wait_ready_us_max = wait_us;
+        }
+        if (is_cmd06) {
+            ++s_state.vendor_response_cmd06_count;
+            s_state.vendor_wait_ready_cmd06_loops_total += ready_loops;
+            s_state.vendor_wait_ready_cmd06_us_total += wait_us;
         }
         if (tud_vendor_n_write(0, response, bulk_send_len) != bulk_send_len) {
             ESP_LOGW(TAG, "failed to queue vendor response cmd=0x%02x", response[0]);
             return;
         }
 
+        const int64_t flush_start_us = esp_timer_get_time();
+        ++s_state.vendor_flush_calls;
+        if (is_cmd06) {
+            ++s_state.vendor_flush_calls_cmd06;
+        }
         uint32_t flushed = 0;
         for (int retry = 0; retry < 100 && flushed == 0U; ++retry) {
             flushed = tud_vendor_n_write_flush(0);
             if (flushed == 0U) {
+                ++s_state.vendor_flush_zero_total;
+                if (is_cmd06) {
+                    ++s_state.vendor_flush_zero_cmd06_total;
+                }
                 vTaskDelay(pdMS_TO_TICKS(1));
             }
         }
+        const uint64_t flush_us = (uint64_t)(esp_timer_get_time() - flush_start_us);
+        s_state.vendor_flush_us_total += flush_us;
+        if (flush_us > s_state.vendor_flush_us_max) {
+            s_state.vendor_flush_us_max = flush_us;
+        }
+        if (is_cmd06) {
+            s_state.vendor_flush_cmd06_us_total += flush_us;
+        }
         if (flushed == 0U) {
+            ++s_state.vendor_flush_fail_count;
+            if (is_cmd06) {
+                ++s_state.vendor_flush_fail_cmd06_count;
+            }
             ESP_LOGW(TAG, "failed to flush vendor response cmd=0x%02x", response[0]);
         }
         return;
