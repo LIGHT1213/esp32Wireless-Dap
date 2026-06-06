@@ -1,0 +1,4 @@
+I (543949) backend_b: PING received, sending PONG
+I (548970) backend_b: PING received, sending PONG
+I (550794) wdap_transport: stats tx_frames=40 rx_frames=40 tx_msg=20 rx_msg=20 ack_rx=20 ack_tx=20 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0
+I (553986) backend_b: PING received, sending PONG

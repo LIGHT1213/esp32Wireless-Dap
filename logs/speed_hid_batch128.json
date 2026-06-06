@@ -1,0 +1,12 @@
+﻿{
+    "round":  "hid_batch128",
+    "timestamp":  "2026-04-29T19:28:23",
+    "success":  false,
+    "exit_code":  1,
+    "wall_seconds":  66.298,
+    "data_bytes":  1056792,
+    "hex_file_bytes":  2972557,
+    "effective_kib_per_sec":  0,
+    "hex_file_kib_per_sec":  0,
+    "target_kib_per_sec":  34.448
+}

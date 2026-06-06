@@ -1,0 +1,4 @@
+Load "DapTestH7\\DapTestH7.axf" 
+RDDI-DAP Error
+Error: Flash Download failed  -  Target DLL has been cancelled
+Flash Load finished at 19:16:54

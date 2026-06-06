@@ -1,0 +1,39 @@
+I (233146) backend_b: DAP type=1 len=2 cmd=0x00 b1=02 b2=00 b3=00 rsp_len=21 r0=00 r1=13 r2=57 r3=69
+I (233148) backend_b: DAP type=1 len=2 cmd=0x00 b1=03 b2=00 b3=00 rsp_len=18 r0=00 r1=10 r2=57 r3=44
+I (233155) backend_b: DAP type=1 len=2 cmd=0x00 b1=04 b2=00 b3=00 rsp_len=8 r0=00 r1=06 r2=32 r3=2e
+I (233185) backend_b: DAP type=1 len=2 cmd=0x00 b1=f0 b2=00 b3=00 rsp_len=3 r0=00 r1=01 r2=31 r3=00
+I (233201) backend_b: DAP type=1 len=2 cmd=0x00 b1=01 b2=00 b3=00 rsp_len=9 r0=00 r1=07 r2=4f r3=70
+I (233212) backend_b: DAP type=1 len=2 cmd=0x00 b1=02 b2=00 b3=00 rsp_len=21 r0=00 r1=13 r2=57 r3=69
+I (233219) backend_b: DAP type=1 len=2 cmd=0x00 b1=ff b2=00 b3=00 rsp_len=4 r0=00 r1=02 r2=00 r3=02
+I (233221) backend_b: DAP type=1 len=2 cmd=0x00 b1=fe b2=00 b3=00 rsp_len=3 r0=00 r1=01 r2=08 r3=00
+I (233230) backend_b: DAP type=1 len=2 cmd=0x00 b1=f0 b2=00 b3=00 rsp_len=3 r0=00 r1=01 r2=31 r3=00
+I (233238) backend_b: DAP type=1 len=2 cmd=0x02 b1=01 b2=00 b3=00 rsp_len=2 r0=02 r1=01 r2=00 r3=00
+I (233251) backend_b: DAP type=1 len=5 cmd=0x11 b1=80 b2=96 b3=98 rsp_len=2 r0=11 r1=00 r2=00 r3=00
+I (233293) backend_b: DAP type=1 len=6 cmd=0x04 b1=00 b2=64 b3=00 rsp_len=2 r0=04 r1=00 r2=00 r3=00
+I (233305) backend_b: DAP type=1 len=2 cmd=0x13 b1=00 b2=00 b3=00 rsp_len=2 r0=13 r1=00 r2=00 r3=00
+I (233308) backend_b: DAP type=1 len=3 cmd=0x01 b1=00 b2=01 b3=00 rsp_len=2 r0=01 r1=00 r2=00 r3=00
+I (233315) backend_b: DAP type=1 len=9 cmd=0x12 b1=33 b2=ff b3=ff rsp_len=2 r0=12 r1=00 r2=00 r3=00
+I (233325) backend_b: DAP type=1 len=4 cmd=0x12 b1=10 b2=9e b3=e7 rsp_len=2 r0=12 r1=00 r2=00 r3=00
+I (233332) backend_b: DAP type=1 len=9 cmd=0x12 b1=33 b2=ff b3=ff rsp_len=2 r0=12 r1=00 r2=00 r3=00
+I (233340) backend_b: DAP type=1 len=3 cmd=0x12 b1=08 b2=00 b3=00 rsp_len=2 r0=12 r1=00 r2=00 r3=00
+I (233349) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=02 rsp_len=7 r0=05 r1=01 r2=01 r3=77
+I (233376) backend_b: DAP type=1 len=3 cmd=0x12 b1=08 b2=00 b3=00 rsp_len=2 r0=12 r1=00 r2=00 r3=00
+I (233390) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=02 rsp_len=7 r0=05 r1=01 r2=01 r3=77
+I (233393) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=04 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (233399) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=06 rsp_len=7 r0=05 r1=01 r2=01 r3=40
+I (233408) backend_b: DAP type=1 len=6 cmd=0x08 b1=00 b2=1e b3=00 rsp_len=2 r0=08 r1=00 r2=00 r3=00
+I (233416) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=04 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (233425) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=08 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (233444) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=08 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (233446) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=0f rsp_len=7 r0=05 r1=01 r2=01 r3=01
+I (233456) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=08 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (233467) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=03 rsp_len=7 r0=05 r1=01 r2=01 r3=52
+I (233477) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=01 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (233479) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=03 rsp_len=7 r0=05 r1=01 r2=01 r3=60
+I (233490) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=01 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (233497) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=03 rsp_len=7 r0=05 r1=01 r2=01 r3=61
+I (240654) wdap_transport: stats tx_frames=198 rx_frames=233 tx_msg=196 rx_msg=231 ack_rx=2 ack_tx=2 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0
+I (250658) wdap_transport: stats tx_frames=198 rx_frames=233 tx_msg=196 rx_msg=231 ack_rx=2 ack_tx=2 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0
+I (260662) wdap_transport: stats tx_frames=198 rx_frames=233 tx_msg=196 rx_msg=231 ack_rx=2 ack_tx=2 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0
+I (270666) wdap_transport: stats tx_frames=198 rx_frames=233 tx_msg=196 rx_msg=231 ack_rx=2 ack_tx=2 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0
+

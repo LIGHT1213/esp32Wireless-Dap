@@ -1,0 +1,14 @@
+{
+    "round": "hid_mtu1460_batch22_sendcbskip",
+    "timestamp": "2026-04-29T10:58:45",
+    "success": true,
+    "exit_code": 0,
+    "wall_seconds": 99.204,
+    "data_bytes": 1056792,
+    "hex_file_bytes": 2972557,
+    "effective_kib_per_sec": 10.403,
+    "hex_file_kib_per_sec": 29.262,
+    "target_kib_per_sec": 34.448,
+    "target_percent_of_43_06": 24.16,
+    "hex_file_percent_of_43_06": 67.96
+}

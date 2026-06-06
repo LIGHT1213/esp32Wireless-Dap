@@ -1,0 +1,18 @@
+﻿I (223332) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (223333) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (223335) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (223337) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (223340) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=15 rsp_cmd=0x00
+I (223349) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (223353) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=15 rsp_cmd=0x00
+I (223361) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (223364) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=8 rsp_cmd=0x00
+I (223373) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (223373) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=3 rsp_cmd=0x00
+W (223384) usb_dap_frontend: Vendor response short write 384/512
+I (223391) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=9 rsp_cmd=0x00
+W (223396) usb_dap_frontend: Vendor response short write 320/512
+I (223403) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=15 rsp_cmd=0x00
+W (223409) usb_dap_frontend: Vendor response short write 0/512
+I (223453) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=4 rsp_cmd=0x00
+W (223454) usb_dap_frontend: Vendor response short write 0/512

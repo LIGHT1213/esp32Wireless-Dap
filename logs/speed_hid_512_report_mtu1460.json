@@ -1,0 +1,14 @@
+{
+    "round": "hid_512_report_mtu1460",
+    "timestamp": "2026-04-29T11:08:20",
+    "success": false,
+    "exit_code": 1,
+    "wall_seconds": 2.273,
+    "data_bytes": 1056792,
+    "hex_file_bytes": 2972557,
+    "effective_kib_per_sec": 0,
+    "hex_file_kib_per_sec": 0,
+    "target_kib_per_sec": 34.448,
+    "target_percent_of_43_06": 0,
+    "hex_file_percent_of_43_06": 0
+}

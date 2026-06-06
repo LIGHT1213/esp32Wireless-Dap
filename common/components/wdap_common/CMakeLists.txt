@@ -1,9 +1,0 @@
-idf_component_register(
-    SRCS
-        "log_utils.c"
-        "transport_proto.c"
-    INCLUDE_DIRS
-        "include"
-    REQUIRES
-        esp_timer
-)

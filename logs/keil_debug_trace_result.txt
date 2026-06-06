@@ -1,0 +1,16 @@
+exit=1
+STDOUT:
+Load "DapTestH7\\DapTestH7.axf" 
+
+Internal DLL Error
+
+Error: Flash Download failed  -  Target DLL has been cancelled
+
+Flash Load finished at 08:37:22
+
+success=False
+flash_download: Flash Download failed, Error: Flash Download failed
+next: check USB enumeration, ESP-NOW PING/PONG, DAP command logs, then SWD waveforms/reset.
+
+STDERR:
+

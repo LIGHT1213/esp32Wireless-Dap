@@ -1,0 +1,12 @@
+﻿{
+    "round":  "hid_batch64_backend_nomemset",
+    "timestamp":  "2026-04-29T19:37:24",
+    "success":  true,
+    "exit_code":  0,
+    "wall_seconds":  117.585,
+    "data_bytes":  1056792,
+    "hex_file_bytes":  2972557,
+    "effective_kib_per_sec":  8.777,
+    "hex_file_kib_per_sec":  24.688,
+    "target_kib_per_sec":  34.448
+}

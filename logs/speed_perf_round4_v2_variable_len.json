@@ -1,0 +1,18 @@
+﻿{
+    "name":  "speed_perf_round4_v2_variable_len",
+    "timestamp":  "2026-04-29T08:52:26",
+    "exit_code":  1,
+    "success":  false,
+    "hex_data_bytes":  1056792,
+    "wall_seconds":  2.036,
+    "effective_kib_per_s":  0,
+    "target_kib_per_s":  34.448,
+    "log":  "C:\\Users\\pan39\\Desktop\\workSpace\\ESP_NOWDAP\\wireless-dap-espnow-daplink\\logs\\keil_flash_test.log",
+    "keil_tail":  [
+                      "Load \"DapTestH7\\\\DapTestH7.axf\" ",
+                      "Erase Failed!RDDI-DAP Error",
+                      "Error: Flash Download failed  -  \"Cortex-M7\"",
+                      "Flash Load finished at 08:52:26",
+                      ""
+                  ]
+}

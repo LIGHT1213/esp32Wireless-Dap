@@ -1,0 +1,12 @@
+{
+    "round": "winusb_v2_sync_packet512_hid_renamed",
+    "timestamp": "2026-04-29T20:43:15",
+    "success": true,
+    "exit_code": 0,
+    "wall_seconds": 60.813,
+    "data_bytes": 1056792,
+    "hex_file_bytes": 2972557,
+    "effective_kib_per_sec": 16.971,
+    "hex_file_kib_per_sec": 47.735,
+    "target_kib_per_sec": 34.448
+}

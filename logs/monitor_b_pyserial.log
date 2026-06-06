@@ -1,0 +1,100 @@
+[B] ESP-ROM:esp32s3-20210327
+[B] Build:Mar 27 2021
+[B] rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+[B] SPIWP:0xee
+[B] mode:DIO, clock div:1
+[B] load:0x3fce2810,len:0x15a0
+[B] load:0x403c8700,len:0x4
+[B] load:0x403c8704,len:0xd20
+[B] load:0x403cb700,len:0x2f00
+[B] entry 0x403c8928
+[B] I (27) boot: ESP-IDF v5.4.1 2nd stage bootloader
+[B] I (27) boot: compile time Apr 28 2026 23:23:52
+[B] I (27) boot: Multicore bootloader
+[B] I (27) boot: chip revision: v0.2
+[B] I (30) boot: efuse block revision: v1.4
+[B] I (33) boot.esp32s3: Boot SPI Speed : 80MHz
+[B] I (37) boot.esp32s3: SPI Mode       : DIO
+[B] I (41) boot.esp32s3: SPI Flash Size : 2MB
+[B] I (45) boot: Enabling RNG early entropy source...
+[B] I (49) boot: Partition Table:
+[B] I (52) boot: ## Label            Usage          Type ST Offset   Length
+[B] I (58) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+[B] I (65) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+[B] I (71) boot:  2 factory          factory app      00 00 00010000 00100000
+[B] I (78) boot: End of partition table
+[B] I (81) esp_i[B] m[B] age: segment 0: paddr=00010020 vaddr=3c090020 size=1a06ch (1066[B] 0[B] 4) map
+[B] I[B]  (107) esp_image: segment 1: paddr=0002a094 vaddr=3fc9aa00 size[B] =[B] 04a14h ( 18964) load
+[B] I (111) esp_image: segment 2: paddr=0002e[B] a[B] b0 vaddr=40374000 size=01568h (  5480) load
+[B] I (113) esp_image:[B]  [B] segment 3: paddr=00030020 vaddr=42000020 size=83d7ch (540028) m[B] a[B] p
+[B] I[B]  (214) esp_image: segment 4: paddr=000b3da4 vaddr=40375568 size[B] =[B] 15420h ( 87072) load
+[B] I[B]  (233) esp_image: segment 5: paddr=000c91cc vaddr=600fe100 size[B] =[B] 0001ch (    28) load
+[B] I[B]  (242) boot: Loaded app from partition at offset 0x10000
+[B] I (24[B] 2[B] ) boot: Disabling RNG early entropy source...
+[B] I[B]  (252) cpu_start: Multicore app
+[B] I[B]  (261) cpu_start: Pro cpu start user code
+[B] I (261) cpu_start: c[B] p[B] u freq: 160000000 Hz
+[B] I (261) app_init: Application information[B] :[B] 
+[B] I (261) app_init: Project name:     wdap_backend_b
+[B] I (266) a[B] p[B] p_init: App version:      1
+[B] I (269) app_init: Compile time:   [B]  [B]  Apr 28 2026 23:22:21
+[B] I (274) app_init: ELF file SHA256:  976e[B] 5[B] 33b4...
+[B] I (279) app_init: ESP-IDF:          v5.4.1
+[B] I (283) ef[B] u[B] se_init: Min chip rev:     v0.0
+[B] I (286) efuse_init: Max chip r[B] e[B] v:     v0.99 
+[B] I (290) efuse_init: Chip rev:         v0.2
+[B] I (2[B] 9[B] 4) heap_init: Initializing. RAM available for dynamic allocatio[B] n[B] :
+[B] I (301) heap_init: At 3FCA3188 len 00046588 (281 KiB): RAM
+[B] I[B]  (306) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+[B] I (31[B] 1[B] ) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+[B] I (316) h[B] e[B] ap_init: At 600FE11C len 00001ECC (7 KiB): RTCRAM
+[B] I (322) spi_[B] f[B] lash: detected chip: boya
+[B] I (325) spi_flash: flash io: dio
+[B] W [B] ([B] 328) spi_flash: Detected size(8192k) larger than the size in th[B] e[B]  binary image header(2048k). Using the size in the binary image[B]  [B] header.
+[B] I (340) sleep_gpio: Configure to isolate all GPIO pins[B]  [B] in sleep state
+[B] I (346) sleep_gpio: Enable automatic switching [B] o[B] f GPIO sleep configuration
+[B] I (353) main_task: Started on CPU0[B] 
+[B] I[B]  (373) main_task: Calling app_main()
+[B] I[B]  (393) pp: pp rom version: e7ae62f
+[B] I (393) net80211: net80211 [B] r[B] om version: e7ae62f
+[B] I[B]  (403) wifi:wifi driver task: 3fcae1c4, prio:23, stack:6656, co[B] r[B] e=0
+[B] I[B]  (403) wifi:wifi firmware version: 79fa3f41ba
+[B] I (403) wifi:wif[B] i[B]  certification version: v7.0
+[B] I (403) wifi:config NVS flash: en[B] a[B] bled
+[B] I (403) wifi:config nano formatting: disabled
+[B] I (413) wi[B] f[B] i:Init data frame dynamic rx buffer num: 32
+[B] I (413) wifi:Init [B] s[B] tatic rx mgmt buffer num: 5
+[B] I (423) wifi:Init management short[B]  [B] buffer num: 32
+[B] I (423) wifi:Init dynamic tx buffer num: 32
+[B] I [B] ([B] 433) wifi:Init static tx FG buffer num: 2
+[B] I (433) wifi:Init st[B] a[B] tic rx buffer size: 1600
+[B] I (433) wifi:Init static rx buffer nu[B] m[B] : 10
+[B] I (443) wifi:Init dynamic rx buffer num: 32
+[B] I (443) wifi[B] _[B] init: rx ba win: 6
+[B] I (443) wifi_init: accept mbox: 6
+[B] I (453) [B] w[B] ifi_init: tcpip mbox: 32
+[B] I (453) wifi_init: udp mbox: 6
+[B] I (45[B] 3[B] ) wifi_init: tcp mbox: 6
+[B] I (463) wifi_init: tcp tx win: 5760
+[B] I[B]  (463) wifi_init: tcp rx win: 5760
+[B] I (463) wifi_init: tcp mss:[B]  [B] 1440
+[B] I (473) wifi_init: WiFi IRAM OP enabled
+[B] I (473) wifi_ini[B] t[B] : WiFi RX IRAM OP enabled
+[B] I (473) phy_init: phy_version 700,85[B] 8[B] 2a7fd,Feb 10 2025,20:13:11
+[B] I[B]  (563) wifi:mode : sta (20:6e:f1:d6:02:d0)
+[B] I (563) wifi:enable[B]  [B] tsf
+[B] I (563) wdap_transport: backend_b Wi-Fi STA init ok, sta_m[B] a[B] c=20:6e:f1:d6:02:d0 peer_mac=20:6e:f1:d6:01:a8 channel=6
+[B] I (57[B] 3[B] ) ESPNOW: espnow [version: 2.0] init
+[B] I (573) wdap_transport: e[B] s[B] p_now_add_peer ok peer=20:6e:f1:d6:01:a8 channel=6
+[B] I (583) gpi[B] o[B] : GPIO[5]| InputEn: 0| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pu[B] l[B] ldown: 0| Intr:0 
+[B] I (583) gpio: GPIO[4]| InputEn: 1| OutputEn:[B]  [B] 1| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0 
+[B] I (593) gpio:[B]  [B] GPIO[6]| InputEn: 1| OutputEn: 1| OpenDrain: 1| Pullup: 1| Pull[B] d[B] own: 0| Intr:0 
+[B] I (603) backend_swd_gpio: SWD init ok: SWCLK=G[B] P[B] IO5 SWDIO=GPIO4 nRESET=GPIO6 UART_TX=GPIO17 UART_RX=GPIO18 baud[B] =[B] 115200
+[B] I (613) daplink_port: DAPLink CMSIS-DAP core initialize[B] d[B] , packet_size=64 packet_count=4
+[B] I (623) wdap_transport: stats [B] t[B] x_frames=0 rx_frames=0 tx_msg=0 rx_msg=0 ack_rx=0 ack_tx=0 nack[B] _[B] rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fa[B] i[B] l=0
+[B] I (633) backend_b: backend_b ready
+[B] I (643) main_task: Ret[B] u[B] rned from app_main()
+[B] I[B]  (3563) backend_b: PING received, sending PONG
+[B] I[B]  (8573) backend_b: PING received, sending PONG
+[B] I[B]  (10633) wdap_transport: stats tx_frames=4 rx_frames=4 tx_msg=2[B]  [B] rx_msg=2 ack_rx=2 ack_tx=2 nack_rx=0 nack_tx=0 retries=0 timeou[B] t[B] s=0 crc=0 dup=0 reasm=0 send_fail=0
+[B] I[B]  (13583) backend_b: PING received, sending PONG

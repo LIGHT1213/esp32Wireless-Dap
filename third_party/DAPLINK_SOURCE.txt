@@ -1,0 +1,7 @@
+﻿Official DAPLink source vendored from:
+https://github.com/ARMmbed/DAPLink
+Branch: main
+Commit: 8f4e9e4
+License: Apache-2.0, see third_party/DAPLink/LICENSE
+
+This project uses the official CMSIS-DAP command core instead of third-party Wireless DAP code.

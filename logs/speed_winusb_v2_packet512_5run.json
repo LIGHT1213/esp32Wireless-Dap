@@ -1,0 +1,52 @@
+{
+    "round": "winusb_v2_packet512_5run",
+    "timestamp": "2026-04-29T20:54:35",
+    "success": true,
+    "success_count": 5,
+    "avg_wall_seconds": 64.41,
+    "avg_effective_kib_per_sec": 16.056,
+    "avg_hex_file_kib_per_sec": 45.164,
+    "target_kib_per_sec": 34.448,
+    "runs": [
+        {
+            "run": 1,
+            "success": true,
+            "exit_code": 0,
+            "wall_seconds": 68.157,
+            "effective_kib_per_sec": 15.142,
+            "hex_file_kib_per_sec": 42.591
+        },
+        {
+            "run": 2,
+            "success": true,
+            "exit_code": 0,
+            "wall_seconds": 64.638,
+            "effective_kib_per_sec": 15.966,
+            "hex_file_kib_per_sec": 44.91
+        },
+        {
+            "run": 3,
+            "success": true,
+            "exit_code": 0,
+            "wall_seconds": 61.326,
+            "effective_kib_per_sec": 16.828,
+            "hex_file_kib_per_sec": 47.335
+        },
+        {
+            "run": 4,
+            "success": true,
+            "exit_code": 0,
+            "wall_seconds": 60.84,
+            "effective_kib_per_sec": 16.963,
+            "hex_file_kib_per_sec": 47.714
+        },
+        {
+            "run": 5,
+            "success": true,
+            "exit_code": 0,
+            "wall_seconds": 67.09,
+            "effective_kib_per_sec": 15.383,
+            "hex_file_kib_per_sec": 43.269
+        }
+    ]
+}

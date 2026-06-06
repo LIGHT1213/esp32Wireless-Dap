@@ -1,0 +1,48 @@
+menu "Wireless DAP configuration"
+
+config WDAP_ROLE_FRONTEND
+    bool "Build frontend A role"
+    default n
+
+config WDAP_ROLE_BACKEND
+    bool "Build backend B role"
+    default n
+
+config WDAP_ESPNOW_CHANNEL
+    int "ESP-NOW Wi-Fi channel"
+    range 1 13
+    default 6
+
+config WDAP_ESPNOW_PAYLOAD_MTU
+    int "ESP-NOW reliable payload MTU"
+    range 32 1460
+    default 1460
+
+config WDAP_DAP_PACKET_SIZE
+    int "CMSIS-DAP packet size"
+    range 64 512
+    default 64
+
+config WDAP_DAP_PACKET_COUNT
+    int "CMSIS-DAP packet count"
+    range 1 16
+    default 8
+
+config WDAP_USB_HID_FALLBACK
+    bool "Enable trailing HID compatibility interface"
+    default y
+    help
+        The HID interface is placed after the CMSIS-DAP v2 WinUSB bulk interface
+        so Keil should prefer v2. It is not intended as the primary high-speed path.
+
+config WDAP_TRANSFER_TIMEOUT_MS
+    int "DAP request timeout in milliseconds"
+    range 100 30000
+    default 3000
+
+config WDAP_ESPNOW_RETRY_COUNT
+    int "ESP-NOW fragment retry count"
+    range 1 32
+    default 8
+
+endmenu

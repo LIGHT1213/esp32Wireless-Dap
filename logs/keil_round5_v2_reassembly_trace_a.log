@@ -1,0 +1,69 @@
+﻿I (4134) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (4142) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=15 rsp_cmd=0x00
+I (4144) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (4151) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=15 rsp_cmd=0x00
+I (4152) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (4172) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=8 rsp_cmd=0x00
+I (4174) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (4176) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=3 rsp_cmd=0x00
+I (4181) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (4187) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=9 rsp_cmd=0x00
+I (4192) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (4200) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=15 rsp_cmd=0x00
+I (4204) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (4210) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=4 rsp_cmd=0x00
+I (4215) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (4222) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=3 rsp_cmd=0x00
+I (4227) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00
+I (4234) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=3 rsp_cmd=0x00
+I (4238) usb_dap_frontend: USB req ch=0 len=2 cmd=0x02
+I (4245) usb_dap_frontend: USB rsp ch=0 req_cmd=0x02 rsp_len=2 rsp_cmd=0x02
+I (4250) usb_dap_frontend: USB req ch=0 len=5 cmd=0x11
+I (4256) usb_dap_frontend: USB rsp ch=0 req_cmd=0x11 rsp_len=2 rsp_cmd=0x11
+I (4262) usb_dap_frontend: USB req ch=0 len=6 cmd=0x04
+I (4271) usb_dap_frontend: USB rsp ch=0 req_cmd=0x04 rsp_len=2 rsp_cmd=0x04
+I (4273) usb_dap_frontend: USB req ch=0 len=2 cmd=0x13
+I (4280) usb_dap_frontend: USB rsp ch=0 req_cmd=0x13 rsp_len=2 rsp_cmd=0x13
+I (4285) usb_dap_frontend: USB req ch=0 len=3 cmd=0x01
+I (4291) usb_dap_frontend: USB rsp ch=0 req_cmd=0x01 rsp_len=2 rsp_cmd=0x01
+I (4296) usb_dap_frontend: USB req ch=0 len=9 cmd=0x12
+I (4302) usb_dap_frontend: USB rsp ch=0 req_cmd=0x12 rsp_len=2 rsp_cmd=0x12
+I (4308) usb_dap_frontend: USB req ch=0 len=4 cmd=0x12
+I (4318) usb_dap_frontend: USB rsp ch=0 req_cmd=0x12 rsp_len=2 rsp_cmd=0x12
+I (4319) usb_dap_frontend: USB req ch=0 len=9 cmd=0x12
+I (4325) usb_dap_frontend: USB rsp ch=0 req_cmd=0x12 rsp_len=2 rsp_cmd=0x12
+I (4331) usb_dap_frontend: USB req ch=0 len=3 cmd=0x12
+I (4337) usb_dap_frontend: USB rsp ch=0 req_cmd=0x12 rsp_len=2 rsp_cmd=0x12
+I (4342) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05
+I (4348) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp_cmd=0x05
+I (4354) usb_dap_frontend: USB req ch=0 len=3 cmd=0x12
+I (4360) usb_dap_frontend: USB rsp ch=0 req_cmd=0x12 rsp_len=2 rsp_cmd=0x12
+I (4365) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05
+I (4374) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp_cmd=0x05
+I (4377) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05
+I (4384) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp_cmd=0x05
+I (4389) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05
+I (4394) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp_cmd=0x05
+I (4400) usb_dap_frontend: USB req ch=0 len=6 cmd=0x08
+I (4406) usb_dap_frontend: USB rsp ch=0 req_cmd=0x08 rsp_len=2 rsp_cmd=0x08
+I (4412) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05
+I (4418) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp_cmd=0x05
+I (4423) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05
+I (4429) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp_cmd=0x05
+I (4435) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05
+I (4441) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp_cmd=0x05
+I (4446) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05
+I (4466) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp_cmd=0x05
+I (4467) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05
+I (4477) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp_cmd=0x05
+I (4479) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05
+I (4484) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp_cmd=0x05
+I (4486) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05
+I (4491) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp_cmd=0x05
+I (4497) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05
+I (4530) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp_cmd=0x05
+I (5759) frontend_a: PING/PONG ok
+I (5760) wdap_transport: stats tx_frames=258 rx_frames=258 tx_msg=129 rx_msg=129 ack_rx=129 ack_tx=129 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0
+I (10769) frontend_a: PING/PONG ok
+I (10769) wdap_transport: stats tx_frames=260 rx_frames=260 tx_msg=130 rx_msg=130 ack_rx=130 ack_tx=130 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0
+I (15777) frontend_a: PING/PONG startup self-test done; stopping ping task to keep DAP queue dedicated to Keil

@@ -1,0 +1,4 @@
+Load "DapTestH7\\DapTestH7.axf" 
+Erase Failed!RDDI-DAP Error
+Error: Flash Download failed  -  "Cortex-M7"
+Flash Load finished at 20:36:00

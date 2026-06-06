@@ -1,0 +1,103 @@
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2810,len:0x15a0
+load:0x403c8700,len:0x4
+load:0x403c8704,len:0xd20
+load:0x403cb700,len:0x2f00
+entry 0x403c8928
+I (27) boot: ESP-IDF v5.4.1 2nd stage bootloader
+I (27) boot: compile time Apr 29 2026 08:25:07
+I (27) boot: Multicore bootloader
+I (27) boot: chip revision: v0.2
+I (30) boot: efuse block revision: v1.4
+I (33) boot.esp32s3: Boot SPI Speed : 80MHz
+I (37) boot.esp32s3: SPI Mode       : DIO
+I (41) boot.esp32s3: SPI Flash Size : 2MB
+I (45) boot: Enabling RNG early entropy source...
+I (49) boot: Partition Table:
+I (52) boot: ## Label            Usage          Type ST Offset   Length
+I (58) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (65) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (71) boot:  2 factory          factory app      00 00 00010000 00100000
+I (78) boot: End of partition table
+I (81) esp_image: segment 0: paddr=00010020 vaddr=3c090020 size=1a388h (107400) map
+I (107) esp_image: segment 1: paddr=0002a3b0 vaddr=3fc9aa00 size=04a14h ( 18964) load
+I (112) esp_image: segment 2: paddr=0002edcc vaddr=40374000 size=0124ch (  4684) load
+I (113) esp_image: segment 3: paddr=00030020 vaddr=42000020 size=84e10h (544272) map
+I (215) esp_image: segment 4: paddr=000b4e38 vaddr=4037524c size=15724h ( 87844) load
+I (234) esp_image: segment 5: paddr=000ca564 vaddr=600fe100 size=0001ch (    28) load
+I (243) boot: Loaded app from partition at offset 0x10000
+I (243) boot: Disabling RNG early entropy source...
+I (253) cpu_start: Multicore app
+I (262) cpu_start: Pro cpu start user code
+I (262) cpu_start: cpu freq: 160000000 Hz
+I (262) app_init: Application information:
+I (263) app_init: Project name:     wdap_backend_b
+I (267) app_init: App version:      c79be88-dirty
+I (271) app_init: Compile time:     Apr 29 2026 08:23:38
+I (276) app_init: ELF file SHA256:  43ee93093...
+I (281) app_init: ESP-IDF:          v5.4.1
+I (285) efuse_init: Min chip rev:     v0.0
+I (288) efuse_init: Max chip rev:     v0.99 
+I (292) efuse_init: Chip rev:         v0.2
+I (296) heap_init: Initializing. RAM available for dynamic allocation:
+I (303) heap_init: At 3FCA3350 len 000463C0 (280 KiB): RAM
+I (308) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (313) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (318) heap_init: At 600FE11C len 00001ECC (7 KiB): RTCRAM
+I (324) spi_flash: detected chip: boya
+I (327) spi_flash: flash io: dio
+W (330) spi_flash: Detected size(8192k) larger than the size in the binary image header(2048k). Using the size in the binary image header.
+I (342) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (348) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (355) main_task: Started on CPU0
+I (374) main_task: Calling app_main()
+I (391) pp: pp rom version: e7ae62f
+I (392) net80211: net80211 rom version: e7ae62f
+I (394) wifi:wifi driver task: 3fcae38c, prio:23, stack:6656, core=0
+I (402) wifi:wifi firmware version: 79fa3f41ba
+I (402) wifi:wifi certification version: v7.0
+I (403) wifi:config NVS flash: enabled
+I (406) wifi:config nano formatting: disabled
+I (410) wifi:Init data frame dynamic rx buffer num: 32
+I (415) wifi:Init static rx mgmt buffer num: 5
+I (419) wifi:Init management short buffer num: 32
+I (423) wifi:Init dynamic tx buffer num: 32
+I (427) wifi:Init static tx FG buffer num: 2
+I (431) wifi:Init static rx buffer size: 1600
+I (436) wifi:Init static rx buffer num: 10
+I (439) wifi:Init dynamic rx buffer num: 32
+I (444) wifi_init: rx ba win: 6
+I (446) wifi_init: accept mbox: 6
+I (449) wifi_init: tcpip mbox: 32
+I (452) wifi_init: udp mbox: 6
+I (455) wifi_init: tcp mbox: 6
+I (458) wifi_init: tcp tx win: 5760
+I (461) wifi_init: tcp rx win: 5760
+I (464) wifi_init: tcp mss: 1440
+I (467) wifi_init: WiFi IRAM OP enabled
+I (471) wifi_init: WiFi RX IRAM OP enabled
+I (475) phy_init: phy_version 700,8582a7fd,Feb 10 2025,20:13:11
+I (534) wifi:mode : sta (20:6e:f1:d6:02:d0)
+I (534) wifi:enable tsf
+I (535) wifi:Set ps type: 0, coexist: 0
+
+I (537) wifi:enable tsf
+I (540) wdap_transport: backend_b Wi-Fi STA init ok, sta_mac=20:6e:f1:d6:02:d0 peer_mac=20:6e:f1:d6:01:a8 channel=6
+I (546) ESPNOW: espnow [version: 2.0] init
+I (549) wdap_transport: esp_now_add_peer ok peer=20:6e:f1:d6:01:a8 channel=6 mtu=218 rate=MCS4_SGI
+I (558) gpio: GPIO[5]| InputEn: 0| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 
+I (566) gpio: GPIO[4]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0 
+I (574) gpio: GPIO[6]| InputEn: 1| OutputEn: 1| OpenDrain: 1| Pullup: 1| Pulldown: 0| Intr:0 
+I (583) backend_swd_gpio: SWD init ok: SWCLK=GPIO5 SWDIO=GPIO4 nRESET=GPIO6 UART_TX=GPIO17 UART_RX=GPIO18 baud=115200
+I (593) daplink_port: DAPLink CMSIS-DAP core initialized, packet_size=512 packet_count=8
+I (601) wdap_transport: stats tx_frames=0 rx_frames=0 tx_msg=0 rx_msg=0 ack_rx=0 ack_tx=0 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0
+I (615) backend_b: backend_b ready
+I (618) main_task: Returned from app_main()
+I (750) backend_b: PING received, sending PONG
+I (5808) backend_b: PING received, sending PONG
+I (10615) wdap_transport: stats tx_frames=4 rx_frames=4 tx_msg=2 rx_msg=2 ack_rx=2 ack_tx=2 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0
+I (10824) backend_b: PING received, sending PONG

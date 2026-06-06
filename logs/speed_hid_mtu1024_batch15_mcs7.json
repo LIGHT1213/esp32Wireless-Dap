@@ -1,0 +1,12 @@
+﻿{
+    "round":  "hid_mtu1024_batch15_mcs7",
+    "timestamp":  "2026-04-29T10:37:47",
+    "success":  true,
+    "exit_code":  0,
+    "wall_seconds":  100.743,
+    "hex_file":  "C:\\Users\\pan39\\Desktop\\workSpace\\DapTestH7\\MDK-ARM\\DapTestH7\\DapTestH7.hex",
+    "data_bytes":  2972557,
+    "effective_kib_per_sec":  28.815,
+    "target_kib_per_sec":  34.448,
+    "target_percent":  83.65
+}

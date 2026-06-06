@@ -1,0 +1,18 @@
+﻿{
+    "name":  "speed_perf_round5_v2_reassembly",
+    "timestamp":  "2026-04-29T08:59:42",
+    "exit_code":  1,
+    "success":  false,
+    "hex_data_bytes":  1056792,
+    "wall_seconds":  6.9,
+    "effective_kib_per_s":  0,
+    "target_kib_per_s":  34.448,
+    "log":  "C:\\Users\\pan39\\Desktop\\workSpace\\ESP_NOWDAP\\wireless-dap-espnow-daplink\\logs\\keil_flash_test.log",
+    "keil_tail":  [
+                      "Load \"DapTestH7\\\\DapTestH7.axf\" ",
+                      "RDDI-DAP Error",
+                      "Error: Flash Download failed  -  Target DLL has been cancelled",
+                      "Flash Load finished at 08:59:42",
+                      ""
+                  ]
+}

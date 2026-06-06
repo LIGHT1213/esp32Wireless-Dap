@@ -1,0 +1,32 @@
+﻿[
+    {
+        "Iteration":  1,
+        "Exit":  0,
+        "Success":  true,
+        "Log":  "C:\\Users\\pan39\\Desktop\\workSpace\\ESP_NOWDAP\\wireless-dap-espnow-daplink\\logs\\keil_flash_test_1.log"
+    },
+    {
+        "Iteration":  2,
+        "Exit":  0,
+        "Success":  true,
+        "Log":  "C:\\Users\\pan39\\Desktop\\workSpace\\ESP_NOWDAP\\wireless-dap-espnow-daplink\\logs\\keil_flash_test_2.log"
+    },
+    {
+        "Iteration":  3,
+        "Exit":  0,
+        "Success":  true,
+        "Log":  "C:\\Users\\pan39\\Desktop\\workSpace\\ESP_NOWDAP\\wireless-dap-espnow-daplink\\logs\\keil_flash_test_3.log"
+    },
+    {
+        "Iteration":  4,
+        "Exit":  0,
+        "Success":  true,
+        "Log":  "C:\\Users\\pan39\\Desktop\\workSpace\\ESP_NOWDAP\\wireless-dap-espnow-daplink\\logs\\keil_flash_test_4.log"
+    },
+    {
+        "Iteration":  5,
+        "Exit":  0,
+        "Success":  true,
+        "Log":  "C:\\Users\\pan39\\Desktop\\workSpace\\ESP_NOWDAP\\wireless-dap-espnow-daplink\\logs\\keil_flash_test_5.log"
+    }
+]

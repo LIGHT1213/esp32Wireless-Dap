@@ -1,0 +1,16 @@
+﻿{
+    "name":  "speed_perf_round12_hid_no_app_ack",
+    "timestamp":  "2026-04-29T09:21:12",
+    "exit_code":  0,
+    "success":  true,
+    "hex_data_bytes":  1056792,
+    "wall_seconds":  143.194,
+    "effective_kib_per_s":  7.207,
+    "target_kib_per_s":  34.448,
+    "log":  "C:\\Users\\pan39\\Desktop\\workSpace\\ESP_NOWDAP\\wireless-dap-espnow-daplink\\logs\\keil_flash_test.log",
+    "keil_tail":  [
+                      "Load \"DapTestH7\\\\DapTestH7.axf\" ",
+                      "Erase Done.Programming Done.Verify OK.Flash Load finished at 09:21:12",
+                      ""
+                  ]
+}

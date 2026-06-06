@@ -1,0 +1,238 @@
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2810,len:0x11f0
+load:0x403c8700,len:0x4
+load:0x403c8704,len:0xcdc
+load:0x403cb700,len:0x2db0
+entry 0x403c8910
+I (27) boot: ESP-IDF v5.4.1 2nd stage bootloader
+I (27) boot: compile time Apr 29 2026 09:26:03
+I (27) boot: Multicore bootloader
+I (27) boot: chip revision: v0.2
+I (30) boot: efuse block revision: v1.4
+I (33) boot.esp32s3: Boot SPI Speed : 80MHz
+I (37) boot.esp32s3: SPI Mode       : DIO
+I (41) boot.esp32s3: SPI Flash Size : 2MB
+I (45) boot: Enabling RNG early entropy source...
+I (49) boot: Partition Table:
+I (52) boot: ## Label            Usage          Type ST Offset   Length
+I (58) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (65) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (71) boot:  2 factory          factory app      00 00 00010000 00100000
+I (78) boot: End of partition table
+I (81) esp_image: segment 0: paddr=00010020 vaddr=3c080020 size=11ab8h ( 72376) map
+I (101) esp_image: segment 1: paddr=00021ae0 vaddr=3fc97b00 size=04078h ( 16504) load
+I (105) esp_image: segment 2: paddr=00025b60 vaddr=40374000 size=0a4b8h ( 42168) load
+I (114) esp_image: segment 3: paddr=00030020 vaddr=42000020 size=7f008h (520200) map
+I (206) esp_image: segment 4: paddr=000af030 vaddr=4037e4b8 size=09580h ( 38272) load
+I (215) esp_image: segment 5: paddr=000b85b8 vaddr=600fe100 size=0001ch (    28) load
+I (223) boot: Loaded app from partition at offset 0x10000
+I (223) boot: Disabling RNG early entropy source...
+I (233) cpu_start: Multicore app
+I (242) cpu_start: Pro cpu start user code
+I (242) cpu_start: cpu freq: 240000000 Hz
+I (242) app_init: Application information:
+I (242) app_init: Project name:     wdap_backend_b
+I (247) app_init: App version:      7290735-dirty
+I (251) app_init: Compile time:     Apr 29 2026 19:12:10
+I (256) app_init: ELF file SHA256:  6d2685465...
+I (260) app_init: ESP-IDF:          v5.4.1
+I (264) efuse_init: Min chip rev:     v0.0
+I (268) efuse_init: Max chip rev:     v0.99 
+I (272) efuse_init: Chip rev:         v0.2
+I (276) heap_init: Initializing. RAM available for dynamic allocation:
+I (282) heap_init: At 3FC9FE50 len 000498C0 (294 KiB): RAM
+I (287) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (292) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (298) heap_init: At 600FE11C len 00001ECC (7 KiB): RTCRAM
+I (304) spi_flash: detected chip: boya
+I (306) spi_flash: flash io: dio
+W (309) spi_flash: Detected size(8192k) larger than the size in the binary image header(2048k). Using the size in the binary image header.
+I (322) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (328) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (335) main_task: Started on CPU0
+I (354) main_task: Calling app_main()
+I (365) pp: pp rom version: e7ae62f
+I (366) net80211: net80211 rom version: e7ae62f
+I (368) wifi:wifi driver task: 3fcaae8c, prio:23, stack:6656, core=0
+I (373) wifi:wifi firmware version: 79fa3f41ba
+I (373) wifi:wifi certification version: v7.0
+I (376) wifi:config NVS flash: enabled
+I (380) wifi:config nano formatting: disabled
+I (384) wifi:Init data frame dynamic rx buffer num: 32
+I (389) wifi:Init static rx mgmt buffer num: 5
+I (393) wifi:Init management short buffer num: 32
+I (397) wifi:Init dynamic tx buffer num: 32
+I (401) wifi:Init static tx FG buffer num: 2
+I (405) wifi:Init static rx buffer size: 1600
+I (409) wifi:Init static rx buffer num: 10
+I (413) wifi:Init dynamic rx buffer num: 32
+I (418) wifi_init: rx ba win: 6
+I (420) wifi_init: accept mbox: 6
+I (423) wifi_init: tcpip mbox: 32
+I (426) wifi_init: udp mbox: 6
+I (429) wifi_init: tcp mbox: 6
+I (432) wifi_init: tcp tx win: 5760
+I (435) wifi_init: tcp rx win: 5760
+I (438) wifi_init: tcp mss: 1440
+I (441) wifi_init: WiFi IRAM OP enabled
+I (444) wifi_init: WiFi RX IRAM OP enabled
+I (449) phy_init: phy_version 700,8582a7fd,Feb 10 2025,20:13:11
+I (500) wifi:mode : sta (20:6e:f1:d6:02:d0)
+I (500) wifi:enable tsf
+I (501) wifi:Set ps type: 0, coexist: 0
+
+I (503) wifi:enable tsf
+I (505) wdap_transport: backend_b Wi-Fi STA init ok, sta_mac=20:6e:f1:d6:02:d0 peer_mac=20:6e:f1:d6:01:a8 channel=6
+I (512) ESPNOW: espnow [version: 2.0] init
+I (515) wdap_transport: esp_now_add_peer ok peer=20:6e:f1:d6:01:a8 channel=6 mtu=1460 rate=MCS7_SGI
+I (524) gpio: GPIO[5]| InputEn: 0| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0 
+I (532) gpio: GPIO[4]| InputEn: 1| OutputEn: 1| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0 
+I (540) gpio: GPIO[6]| InputEn: 1| OutputEn: 1| OpenDrain: 1| Pullup: 1| Pulldown: 0| Intr:0 
+I (549) backend_swd_gpio: SWD init ok: SWCLK=GPIO5 SWDIO=GPIO4 nRESET=GPIO6 UART_TX=GPIO17 UART_RX=GPIO18 baud=115200
+I (559) daplink_port: DAPLink CMSIS-DAP core initialized, packet_size=512 packet_count=8
+I (567) backend_b: PING received, sending PONG
+I (572) wdap_transport: stats tx_frames=2 rx_frames=1 tx_msg=0 rx_msg=1 ack_rx=0 ack_tx=1 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0
+I (572) backend_b: backend_b ready
+I (588) main_task: Returned from app_main()
+I (3801) backend_b: DAP type=1 len=2 cmd=0x00 b1=02 b2=00 b3=00 rsp_len=21 r0=00 r1=13 r2=57 r3=69
+I (3820) backend_b: DAP type=1 len=2 cmd=0x00 b1=00 b2=00 b3=00 rsp_len=2 r0=00 r1=00 r2=00 r3=00
+I (3851) backend_b: DAP type=1 len=2 cmd=0x00 b1=00 b2=00 b3=00 rsp_len=2 r0=00 r1=00 r2=00 r3=00
+I (3872) backend_b: DAP type=1 len=2 cmd=0x00 b1=00 b2=00 b3=00 rsp_len=2 r0=00 r1=00 r2=00 r3=00
+I (3894) backend_b: DAP type=1 len=2 cmd=0x00 b1=00 b2=00 b3=00 rsp_len=2 r0=00 r1=00 r2=00 r3=00
+I (3916) backend_b: DAP type=1 len=2 cmd=0x00 b1=00 b2=00 b3=00 rsp_len=2 r0=00 r1=00 r2=00 r3=00
+I (3938) backend_b: DAP type=1 len=2 cmd=0x00 b1=00 b2=00 b3=00 rsp_len=2 r0=00 r1=00 r2=00 r3=00
+I (3950) backend_b: DAP type=1 len=2 cmd=0x00 b1=00 b2=00 b3=00 rsp_len=2 r0=00 r1=00 r2=00 r3=00
+I (4929) backend_b: DAP type=1 len=2 cmd=0x00 b1=02 b2=00 b3=00 rsp_len=21 r0=00 r1=13 r2=57 r3=69
+I (4943) backend_b: DAP type=1 len=2 cmd=0x00 b1=03 b2=00 b3=00 rsp_len=15 r0=00 r1=0d r2=57 r3=44
+I (4975) backend_b: DAP type=1 len=2 cmd=0x00 b1=04 b2=00 b3=00 rsp_len=8 r0=00 r1=06 r2=32 r3=2e
+I (4989) backend_b: DAP type=1 len=2 cmd=0x00 b1=f0 b2=00 b3=00 rsp_len=3 r0=00 r1=01 r2=31 r3=00
+I (5006) backend_b: DAP type=1 len=2 cmd=0x00 b1=01 b2=00 b3=00 rsp_len=9 r0=00 r1=07 r2=4f r3=70
+I (5023) backend_b: DAP type=1 len=2 cmd=0x00 b1=02 b2=00 b3=00 rsp_len=21 r0=00 r1=13 r2=57 r3=69
+I (5040) backend_b: DAP type=1 len=2 cmd=0x00 b1=ff b2=00 b3=00 rsp_len=4 r0=00 r1=02 r2=00 r3=02
+I (5059) backend_b: DAP type=1 len=2 cmd=0x00 b1=fe b2=00 b3=00 rsp_len=3 r0=00 r1=01 r2=08 r3=00
+I (5074) backend_b: DAP type=1 len=2 cmd=0x00 b1=f0 b2=00 b3=00 rsp_len=3 r0=00 r1=01 r2=31 r3=00
+I (5091) backend_b: DAP type=1 len=2 cmd=0x02 b1=01 b2=00 b3=00 rsp_len=2 r0=02 r1=01 r2=00 r3=00
+I (5108) backend_b: DAP type=1 len=5 cmd=0x11 b1=80 b2=96 b3=98 rsp_len=2 r0=11 r1=00 r2=00 r3=00
+I (5125) backend_b: DAP type=1 len=6 cmd=0x04 b1=00 b2=64 b3=00 rsp_len=2 r0=04 r1=00 r2=00 r3=00
+I (5142) backend_b: DAP type=1 len=2 cmd=0x13 b1=00 b2=00 b3=00 rsp_len=2 r0=13 r1=00 r2=00 r3=00
+I (5161) backend_b: DAP type=1 len=3 cmd=0x01 b1=00 b2=01 b3=00 rsp_len=2 r0=01 r1=00 r2=00 r3=00
+I (5179) backend_b: DAP type=1 len=9 cmd=0x12 b1=33 b2=ff b3=ff rsp_len=2 r0=12 r1=00 r2=00 r3=00
+I (5193) backend_b: DAP type=1 len=4 cmd=0x12 b1=10 b2=9e b3=e7 rsp_len=2 r0=12 r1=00 r2=00 r3=00
+I (5210) backend_b: DAP type=1 len=9 cmd=0x12 b1=33 b2=ff b3=ff rsp_len=2 r0=12 r1=00 r2=00 r3=00
+I (5227) backend_b: DAP type=1 len=3 cmd=0x12 b1=08 b2=00 b3=00 rsp_len=2 r0=12 r1=00 r2=00 r3=00
+I (5245) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=02 rsp_len=7 r0=05 r1=01 r2=01 r3=77
+I (5264) backend_b: DAP type=1 len=3 cmd=0x12 b1=08 b2=00 b3=00 rsp_len=2 r0=12 r1=00 r2=00 r3=00
+I (5279) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=02 rsp_len=7 r0=05 r1=01 r2=01 r3=77
+I (5295) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=04 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5312) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=06 rsp_len=7 r0=05 r1=01 r2=01 r3=40
+I (5332) backend_b: DAP type=1 len=6 cmd=0x08 b1=00 b2=1e b3=00 rsp_len=2 r0=08 r1=00 r2=00 r3=00
+I (5350) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=04 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5366) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=08 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5387) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=08 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5408) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=0f rsp_len=7 r0=05 r1=01 r2=01 r3=01
+I (5423) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=08 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5439) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=03 rsp_len=7 r0=05 r1=01 r2=01 r3=52
+I (5454) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=01 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5471) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=03 rsp_len=7 r0=05 r1=01 r2=01 r3=60
+I (5488) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=01 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5505) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=03 rsp_len=7 r0=05 r1=01 r2=01 r3=61
+I (5522) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=01 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5539) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=08 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5556) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=0b rsp_len=7 r0=05 r1=01 r2=01 r3=03
+I (5573) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=0f rsp_len=7 r0=05 r1=01 r2=01 r3=02
+I (5590) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=08 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5607) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=01 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5624) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=05 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5641) backend_b: DAP type=1 len=5 cmd=0x06 b1=00 b2=01 b3=00 rsp_len=8 r0=06 r1=01 r2=00 r3=01
+I (5658) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=06 rsp_len=7 r0=05 r1=01 r2=01 r3=40
+I (5675) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=05 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5692) backend_b: DAP type=1 len=5 cmd=0x06 b1=00 b2=01 b3=00 rsp_len=8 r0=06 r1=01 r2=00 r3=01
+I (5709) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=06 rsp_len=7 r0=05 r1=01 r2=01 r3=40
+I (5727) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=05 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5743) backend_b: DAP type=1 len=5 cmd=0x06 b1=00 b2=01 b3=00 rsp_len=8 r0=06 r1=01 r2=00 r3=01
+I (5761) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=06 rsp_len=7 r0=05 r1=01 r2=01 r3=40
+I (5778) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=05 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5797) backend_b: DAP type=1 len=9 cmd=0x06 b1=00 b2=01 b3=00 rsp_len=4 r0=06 r1=01 r2=00 r3=01
+I (5829) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=06 rsp_len=7 r0=05 r1=01 r2=01 r3=40
+I (5840) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=05 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5857) backend_b: DAP type=1 len=9 cmd=0x06 b1=00 b2=01 b3=00 rsp_len=4 r0=06 r1=01 r2=00 r3=01
+I (5879) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=06 rsp_len=7 r0=05 r1=01 r2=01 r3=40
+I (5899) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=05 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5914) backend_b: DAP type=1 len=9 cmd=0x06 b1=00 b2=01 b3=00 rsp_len=4 r0=06 r1=01 r2=00 r3=01
+I (5932) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=06 rsp_len=7 r0=05 r1=01 r2=01 r3=40
+I (5948) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=05 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (5965) backend_b: DAP type=1 len=9 cmd=0x06 b1=00 b2=01 b3=00 rsp_len=4 r0=06 r1=01 r2=00 r3=01
+I (5986) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=06 rsp_len=7 r0=05 r1=01 r2=01 r3=40
+I (5999) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=05 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (6016) backend_b: DAP type=1 len=9 cmd=0x06 b1=00 b2=01 b3=00 rsp_len=4 r0=06 r1=01 r2=00 r3=01
+I (6034) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=06 rsp_len=7 r0=05 r1=01 r2=01 r3=40
+I (6050) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=05 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (6067) backend_b: DAP type=1 len=9 cmd=0x06 b1=00 b2=01 b3=00 rsp_len=4 r0=06 r1=01 r2=00 r3=01
+I (6084) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=06 rsp_len=7 r0=05 r1=01 r2=01 r3=40
+I (6102) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=08 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (6118) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=0b rsp_len=7 r0=05 r1=01 r2=01 r3=03
+I (6135) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=08 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (6153) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=01 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (6170) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=05 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (6187) backend_b: DAP type=1 len=5 cmd=0x06 b1=00 b2=01 b3=00 rsp_len=8 r0=06 r1=01 r2=00 r3=01
+I (6204) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=06 rsp_len=7 r0=05 r1=01 r2=01 r3=40
+I (6221) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=05 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (6238) backend_b: DAP type=1 len=5 cmd=0x06 b1=00 b2=01 b3=00 rsp_len=8 r0=06 r1=01 r2=00 r3=01
+I (6255) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=06 rsp_len=7 r0=05 r1=01 r2=01 r3=40
+I (6272) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=08 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (6289) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=01 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (6306) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=00
+I (6328) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=08 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (6341) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=00
+I (6357) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=08 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (6374) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6391) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=71
+I (6408) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=21
+I (6425) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=01 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (6442) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=03
+I (6459) backend_b: DAP type=1 len=4 cmd=0x05 b1=00 b2=01 b3=06 rsp_len=7 r0=05 r1=01 r2=01 r3=40
+I (6476) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=03
+I (6493) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6511) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6527) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=03
+I (6544) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6561) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=00
+I (6578) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=80
+I (6595) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=01
+I (6612) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6629) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=1f
+I (6646) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6664) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6680) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=00
+I (6698) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6715) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=80
+I (6732) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6753) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6775) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=00
+I (6789) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6807) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=00
+I (6825) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6845) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6861) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=00
+I (6875) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6892) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=00
+I (6910) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6927) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6944) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=00
+I (6961) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (6978) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=00
+I (6995) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (7012) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (7029) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (7056) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (7085) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (7094) backend_b: DAP type=1 len=13 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=3 r0=05 r1=02 r2=01 r3=00
+I (7111) backend_b: DAP type=1 len=9 cmd=0x05 b1=00 b2=02 b3=05 rsp_len=7 r0=05 r1=02 r2=01 r3=04
+I (7128) backend_b: DAP type=1 len=8 cmd=0x05 b1=00 b2=01 b3=05 rsp_len=3 r0=05 r1=01 r2=01 r3=00
+I (10585) wdap_transport: stats tx_frames=137 rx_frames=137 tx_msg=136 rx_msg=136 ack_rx=1 ack_tx=1 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0
+I (20589) wdap_transport: stats tx_frames=137 rx_frames=137 tx_msg=136 rx_msg=136 ack_rx=1 ack_tx=1 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0
+I (30593) wdap_transport: stats tx_frames=137 rx_frames=137 tx_msg=136 rx_msg=136 ack_rx=1 ack_tx=1 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0

@@ -1,0 +1,2 @@
+I (180650) wdap_transport: stats tx_frames=11308 rx_frames=37404 tx_msg=11307 rx_msg=37403 ack_rx=1 ack_tx=1 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0
+

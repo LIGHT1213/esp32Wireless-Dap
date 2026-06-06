@@ -1,0 +1,251 @@
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2810,len:0x11f0
+load:0x403c8700,len:0x4
+load:0x403c8704,len:0xcdc
+load:0x403cb700,len:0x2db0
+entry 0x403c8910
+I (27) boot: ESP-IDF v5.4.1 2nd stage bootloader
+I (27) boot: compile time Apr 29 2026 09:26:48
+I (27) boot: Multicore bootloader
+I (27) boot: chip revision: v0.2
+I (30) boot: efuse block revision: v1.4
+I (33) boot.esp32s3: Boot SPI Speed : 80MHz
+I (37) boot.esp32s3: SPI Mode       : DIO
+I (41) boot.esp32s3: SPI Flash Size : 2MB
+I (45) boot: Enabling RNG early entropy source...
+I (49) boot: Partition Table:
+I (52) boot: ## Label            Usage          Type ST Offset   Length
+I (58) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (65) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (71) boot:  2 factory          factory app      00 00 00010000 00100000
+I (78) boot: End of partition table
+I (81) esp_image: segment 0: paddr=00010020 vaddr=3c090020 size=12ab8h ( 76472) map
+I (102) esp_image: segment 1: paddr=00022ae0 vaddr=3fc97300 size=04290h ( 17040) load
+I (106) esp_image: segment 2: paddr=00026d78 vaddr=40374000 size=092a0h ( 37536) load
+I (114) esp_image: segment 3: paddr=00030020 vaddr=42000020 size=7ffe8h (524264) map
+I (207) esp_image: segment 4: paddr=000b0010 vaddr=4037d2a0 size=0a018h ( 40984) load
+I (221) esp_image: segment 5: paddr=000ba030 vaddr=600fe100 size=0001ch (    28) load
+I (229) boot: Loaded app from partition at offset 0x10000
+I (229) boot: Disabling RNG early entropy source...
+I (239) cpu_start: Multicore app
+I (248) cpu_start: Pro cpu start user code
+I (248) cpu_start: cpu freq: 240000000 Hz
+I (248) app_init: Application information:
+I (248) app_init: Project name:     wdap_frontend_a
+I (253) app_init: App version:      c79be88-dirty
+I (257) app_init: Compile time:     Apr 29 2026 10:45:37
+I (262) app_init: ELF file SHA256:  bd331bfd9...
+I (267) app_init: ESP-IDF:          v5.4.1
+I (270) efuse_init: Min chip rev:     v0.0
+I (274) efuse_init: Max chip rev:     v0.99 
+I (278) efuse_init: Chip rev:         v0.2
+I (282) heap_init: Initializing. RAM available for dynamic allocation:
+I (288) heap_init: At 3FCA0870 len 00048EA0 (291 KiB): RAM
+I (293) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (299) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (304) heap_init: At 600FE11C len 00001ECC (7 KiB): RTCRAM
+I (310) spi_flash: detected chip: boya
+I (313) spi_flash: flash io: dio
+W (316) spi_flash: Detected size(8192k) larger than the size in the binary image header(2048k). Using the size in the binary image header.
+I (328) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (334) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (341) main_task: Started on CPU0
+I (360) main_task: Calling app_main()
+I (373) pp: pp rom version: e7ae62f
+I (373) net80211: net80211 rom version: e7ae62f
+I (375) wifi:wifi driver task: 3fcab930, prio:23, stack:6656, core=0
+I (382) wifi:wifi firmware version: 79fa3f41ba
+I (383) wifi:wifi certification version: v7.0
+I (384) wifi:config NVS flash: enabled
+I (387) wifi:config nano formatting: disabled
+I (391) wifi:Init data frame dynamic rx buffer num: 32
+I (396) wifi:Init static rx mgmt buffer num: 5
+I (400) wifi:Init management short buffer num: 32
+I (405) wifi:Init dynamic tx buffer num: 32
+I (409) wifi:Init static tx FG buffer num: 2
+I (413) wifi:Init static rx buffer size: 1600
+I (417) wifi:Init static rx buffer num: 10
+I (420) wifi:Init dynamic rx buffer num: 32
+I (425) wifi_init: rx ba win: 6
+I (427) wifi_init: accept mbox: 6
+I (430) wifi_init: tcpip mbox: 32
+I (433) wifi_init: udp mbox: 6
+I (436) wifi_init: tcp mbox: 6
+I (439) wifi_init: tcp tx win: 5760
+I (442) wifi_init: tcp rx win: 5760
+I (445) wifi_init: tcp mss: 1440
+I (448) wifi_init: WiFi IRAM OP enabled
+I (452) wifi_init: WiFi RX IRAM OP enabled
+I (456) phy_init: phy_version 700,8582a7fd,Feb 10 2025,20:13:11
+I (503) wifi:mode : sta (20:6e:f1:d6:01:a8)
+I (504) wifi:enable tsf
+I (505) wifi:Set ps type: 0, coexist: 0
+
+I (506) wifi:enable tsf
+I (508) wdap_transport: frontend_a Wi-Fi STA init ok, sta_mac=20:6e:f1:d6:01:a8 peer_mac=20:6e:f1:d6:02:d0 channel=6
+I (515) ESPNOW: espnow [version: 2.0] init
+I (519) wdap_transport: esp_now_add_peer ok peer=20:6e:f1:d6:02:d0 channel=6 mtu=1024 rate=MCS7_SGI
+I (576) frontend_a: PING/PONG ok; DAP queue now dedicated to Keil
+I (577) wdap_transport: stats tx_frames=2 rx_frames=2 tx_msg=1 rx_msg=1 ack_rx=1 ack_tx=1 nack_rx=0 nack_tx=0 retries=0 timeouts=0 crc=0 dup=0 reasm=0 send_fail=0
+I (586) tusb_desc: 
+┌─────────────────────────────────┐
+│  USB Device Descriptor Summary  │
+├───────────────────┬─────────────┤
+│bDeviceClass       │ 0           │
+├───────────────────┼─────────────┤
+│bDeviceSubClass    │ 0           │
+├───────────────────┼─────────────┤
+│bDeviceProtocol    │ 0           │
+├───────────────────┼─────────────┤
+│bMaxPacketSize0    │ 64          │
+├───────────────────┼─────────────┤
+│idVendor           │ 0xd28       │
+├───────────────────┼─────────────┤
+│idProduct          │ 0x208       │
+├───────────────────┼─────────────┤
+│bcdDevice          │ 0x200       │
+├───────────────────┼─────────────┤
+│iManufacturer      │ 0x1         │
+├───────────────────┼─────────────┤
+│iProduct           │ 0x2         │
+├───────────────────┼─────────────┤
+│iSerialNumber      │ 0x3         │
+├───────────────────┼─────────────┤
+│bNumConfigurations │ 0x1         │
+└───────────────────┴─────────────┘
+I (753) TinyUSB: TinyUSB Driver installed on port 0
+I (758) usb_dap_frontend: USB CMSIS-DAP HID optimized initialized, dap_packet=512 hid_fallback=1
+I (766) frontend_a: frontend_a ready
+I (769) main_task: Returned from app_main()
+I (931) usb_dap_frontend: USB mounted/configured
+I (1634) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=02 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1649) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=03 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1667) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=04 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1683) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=f0 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1687) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=01 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1692) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=02 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1704) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=ff b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1710) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=fe b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1728) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=f0 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1734) usb_dap_frontend: USB req ch=0 len=2 cmd=0x02 b1=01 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1737) usb_dap_frontend: USB req ch=0 len=5 cmd=0x11 b1=80 b2=96 b3=98 b4=00 b5=00 b6=00 b7=00
+I (1757) usb_dap_frontend: USB req ch=0 len=6 cmd=0x04 b1=00 b2=64 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1764) usb_dap_frontend: USB req ch=0 len=2 cmd=0x13 b1=00 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1771) usb_dap_frontend: USB req ch=0 len=3 cmd=0x01 b1=00 b2=01 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1781) usb_dap_frontend: USB req ch=0 len=9 cmd=0x12 b1=33 b2=ff b3=ff b4=ff b5=ff b6=ff b7=ff
+I (1788) usb_dap_frontend: USB req ch=0 len=4 cmd=0x12 b1=10 b2=9e b3=e7 b4=00 b5=00 b6=00 b7=00
+I (1806) usb_dap_frontend: USB req ch=0 len=9 cmd=0x12 b1=33 b2=ff b3=ff b4=ff b5=ff b6=ff b7=ff
+I (1809) usb_dap_frontend: USB req ch=0 len=3 cmd=0x12 b1=08 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1814) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=02 b4=00 b5=00 b6=00 b7=00
+I (1837) usb_dap_frontend: USB req ch=0 len=3 cmd=0x12 b1=08 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (1842) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=02 b4=00 b5=00 b6=00 b7=00
+I (1847) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=04 b4=00 b5=00 b6=00 b7=50
+I (1856) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (1864) usb_dap_frontend: USB req ch=0 len=6 cmd=0x08 b1=00 b2=1e b3=00 b4=00 b5=00 b6=00 b7=00
+I (1873) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=04 b4=00 b5=0f b6=00 b7=50
+I (1881) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=00 b5=00 b6=00 b7=00
+I (1890) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=f0 b5=00 b6=00 b7=00
+I (1908) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=0f b4=00 b5=00 b6=00 b7=00
+I (1911) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=00 b5=00 b6=00 b7=00
+I (1917) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=03 b4=00 b5=00 b6=00 b7=00
+I (1925) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=01 b4=60 b5=00 b6=00 b7=03
+I (1934) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=03 b4=00 b5=00 b6=00 b7=00
+I (1943) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=01 b4=61 b5=00 b6=00 b7=03
+I (1951) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=03 b4=00 b5=00 b6=00 b7=00
+I (1961) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=01 b4=52 b5=00 b6=00 b7=03
+I (1969) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=f0 b5=00 b6=00 b7=02
+I (1977) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=0b b4=00 b5=00 b6=00 b7=00
+I (1986) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=0f b4=00 b5=00 b6=00 b7=00
+I (1994) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=00 b5=00 b6=00 b7=02
+I (2010) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=01 b4=12 b5=00 b6=00 b7=80
+I (2013) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=e4 b5=0f b6=0e b7=e0
+I (2020) usb_dap_frontend: USB req ch=0 len=5 cmd=0x06 b1=00 b2=01 b3=00 b4=0f b5=00 b6=00 b7=00
+I (2028) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (2037) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=e8 b5=0f b6=0e b7=e0
+I (2046) usb_dap_frontend: USB req ch=0 len=5 cmd=0x06 b1=00 b2=01 b3=00 b4=0f b5=00 b6=00 b7=00
+I (2054) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (2063) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=04 b5=10 b6=0e b7=e0
+I (2071) usb_dap_frontend: USB req ch=0 len=5 cmd=0x06 b1=00 b2=01 b3=00 b4=0f b5=00 b6=00 b7=00
+I (2080) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (2089) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=04 b5=10 b6=0e b7=e0
+I (2097) usb_dap_frontend: USB req ch=0 len=9 cmd=0x06 b1=00 b2=01 b3=00 b4=0d b5=3f b6=00 b7=77
+I (2113) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (2116) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=04 b5=10 b6=0e b7=e0
+I (2123) usb_dap_frontend: USB req ch=0 len=9 cmd=0x06 b1=00 b2=01 b3=00 b4=0d b5=3f b6=00 b7=77
+I (2132) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (2140) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=34 b5=10 b6=0e b7=e0
+I (2150) usb_dap_frontend: USB req ch=0 len=9 cmd=0x06 b1=00 b2=01 b3=00 b4=0d b5=40 b6=00 b7=00
+I (2174) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (2185) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=3c b5=10 b6=0e b7=e0
+I (2191) usb_dap_frontend: USB req ch=0 len=9 cmd=0x06 b1=00 b2=01 b3=00 b4=0d b5=ff b6=03 b7=e0
+I (2200) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (2215) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=4c b5=10 b6=0e b7=e0
+I (2218) usb_dap_frontend: USB req ch=0 len=9 cmd=0x06 b1=00 b2=01 b3=00 b4=0d b5=03 b6=00 b7=07
+I (2225) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (2234) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=54 b5=10 b6=0e b7=e0
+I (2244) usb_dap_frontend: USB req ch=0 len=9 cmd=0x06 b1=00 b2=01 b3=00 b4=0d b5=80 b6=1e b7=04
+I (2253) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (2260) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=f0 b5=00 b6=00 b7=02
+I (2268) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=0b b4=00 b5=00 b6=00 b7=00
+I (2277) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=00 b5=00 b6=00 b7=02
+I (2285) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=01 b4=12 b5=00 b6=00 b7=80
+I (2294) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=e4 b5=0f b6=0e b7=e0
+I (2303) usb_dap_frontend: USB req ch=0 len=5 cmd=0x06 b1=00 b2=01 b3=00 b4=0f b5=00 b6=00 b7=00
+I (2318) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (2322) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=e8 b5=0f b6=0e b7=e0
+I (2329) usb_dap_frontend: USB req ch=0 len=5 cmd=0x06 b1=00 b2=01 b3=00 b4=0f b5=00 b6=00 b7=00
+I (2337) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (2346) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=00 b5=00 b6=00 b7=00
+I (2354) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=01 b4=52 b5=00 b6=00 b7=03
+I (2400) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=c8 b5=3f b6=04 b7=e0
+I (2407) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=00 b5=00 b6=00 b7=02
+I (2420) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=c8 b5=1f b6=0f b7=e0
+I (2437) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=00 b5=00 b6=00 b7=00
+I (2443) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=fc b5=ed b6=00 b7=e0
+I (2451) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=00 b5=ed b6=00 b7=e0
+I (2460) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=40 b5=ef b6=00 b7=e0
+I (2469) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=01 b4=52 b5=00 b6=00 b7=0b
+I (2477) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=78 b5=ed b6=00 b7=e0
+I (2486) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (2494) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=f0 b5=ed b6=00 b7=e0
+I (2503) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=f0 b5=ed b6=00 b7=e0
+I (2512) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=f0 b5=ed b6=00 b7=e0
+I (2524) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=f0 b5=ed b6=00 b7=e0
+I (2530) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=f0 b5=ed b6=00 b7=e0
+I (2538) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=fc b5=ed b6=00 b7=e0
+I (2547) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=00 b5=20 b6=00 b7=e0
+I (2556) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=00 b5=10 b6=00 b7=e0
+I (2564) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=24 b5=10 b6=00 b7=e0
+I (2573) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=24 b5=10 b6=00 b7=e0
+I (2582) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=24 b5=10 b6=00 b7=e0
+I (2593) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=28 b5=10 b6=00 b7=e0
+I (2604) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=28 b5=10 b6=00 b7=e0
+I (2610) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=28 b5=10 b6=00 b7=e0
+I (2631) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=28 b5=10 b6=00 b7=e0
+I (2641) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=28 b5=10 b6=00 b7=e0
+I (2648) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=38 b5=10 b6=00 b7=e0
+I (2657) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=38 b5=10 b6=00 b7=e0
+I (2668) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=38 b5=10 b6=00 b7=e0
+I (2673) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=38 b5=10 b6=00 b7=e0
+I (2696) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=38 b5=10 b6=00 b7=e0
+I (2712) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=48 b5=10 b6=00 b7=e0
+I (2751) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=48 b5=10 b6=00 b7=e0
+I (2755) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=48 b5=10 b6=00 b7=e0
+I (2761) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=48 b5=10 b6=00 b7=e0
+I (2769) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=48 b5=10 b6=00 b7=e0
+I (2778) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=58 b5=10 b6=00 b7=e0
+I (2787) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=58 b5=10 b6=00 b7=e0
+I (2796) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=58 b5=10 b6=00 b7=e0
+I (2808) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=58 b5=10 b6=00 b7=e0
+I (2814) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=58 b5=10 b6=00 b7=e0
+I (2830) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=00 b5=20 b6=00 b7=e0
+I (2839) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=28 b5=10 b6=00 b7=e0
+I (2852) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=38 b5=10 b6=00 b7=e0
+I (2855) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=48 b5=10 b6=00 b7=e0
+I (2862) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=58 b5=10 b6=00 b7=e0
+I (2871) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=04 b5=e0 b6=00 b7=e0
+I (2880) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=00 b5=10 b6=00 b7=e0

@@ -1,0 +1,14 @@
+{
+    "round": "final_hid64_mtu1460",
+    "timestamp": "2026-04-29T11:11:59",
+    "success": true,
+    "exit_code": 0,
+    "wall_seconds": 95.862,
+    "data_bytes": 1056792,
+    "hex_file_bytes": 2972557,
+    "effective_kib_per_sec": 10.766,
+    "hex_file_kib_per_sec": 30.282,
+    "target_kib_per_sec": 34.448,
+    "target_percent_of_43_06": 25.0,
+    "hex_file_percent_of_43_06": 70.33
+}

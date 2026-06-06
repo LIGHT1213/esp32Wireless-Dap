@@ -1,0 +1,254 @@
+﻿I (20724) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=02 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (20815) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=15 rsp=00 0d 57 69 72 65 6c 65
+I (20817) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=03 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (20826) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=15 rsp=00 0d 57 44 41 50 2d 53
+I (20831) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=04 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (20842) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=8 rsp=00 06 32 2e 31 2e 30 00
+I (20847) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=f0 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (20875) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=3 rsp=00 01 31 00 00 00 00 00
+I (20877) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=01 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (20883) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=9 rsp=00 07 4f 70 65 6e 41 49
+I (20890) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=02 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (20901) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=15 rsp=00 0d 57 69 72 65 6c 65
+I (20907) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=ff b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (20916) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=4 rsp=00 02 00 02 00 00 00 00
+I (20923) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=fe b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (20933) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=3 rsp=00 01 08 00 00 00 00 00
+I (20940) usb_dap_frontend: USB req ch=0 len=2 cmd=0x00 b1=f0 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (20950) usb_dap_frontend: USB rsp ch=0 req_cmd=0x00 rsp_len=3 rsp=00 01 31 00 00 00 00 00
+I (20957) usb_dap_frontend: USB req ch=0 len=2 cmd=0x02 b1=01 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (20968) usb_dap_frontend: USB rsp ch=0 req_cmd=0x02 rsp_len=2 rsp=02 01 00 00 00 00 00 00
+I (20973) usb_dap_frontend: USB req ch=0 len=5 cmd=0x11 b1=80 b2=96 b3=98 b4=00 b5=00 b6=00 b7=00
+I (20983) usb_dap_frontend: USB rsp ch=0 req_cmd=0x11 rsp_len=2 rsp=11 00 00 00 00 00 00 00
+I (20990) usb_dap_frontend: USB req ch=0 len=6 cmd=0x04 b1=00 b2=64 b3=00 b4=00 b5=00 b6=00 b7=00
+I (21000) usb_dap_frontend: USB rsp ch=0 req_cmd=0x04 rsp_len=2 rsp=04 00 00 00 00 00 00 00
+I (21007) usb_dap_frontend: USB req ch=0 len=2 cmd=0x13 b1=00 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (21016) usb_dap_frontend: USB rsp ch=0 req_cmd=0x13 rsp_len=2 rsp=13 00 00 00 00 00 00 00
+I (21023) usb_dap_frontend: USB req ch=0 len=3 cmd=0x01 b1=00 b2=01 b3=00 b4=00 b5=00 b6=00 b7=00
+I (21038) usb_dap_frontend: USB rsp ch=0 req_cmd=0x01 rsp_len=2 rsp=01 00 00 00 00 00 00 00
+I (21040) usb_dap_frontend: USB req ch=0 len=9 cmd=0x12 b1=33 b2=ff b3=ff b4=ff b5=ff b6=ff b7=ff
+I (21051) usb_dap_frontend: USB rsp ch=0 req_cmd=0x12 rsp_len=2 rsp=12 00 00 00 00 00 00 00
+I (21057) usb_dap_frontend: USB req ch=0 len=4 cmd=0x12 b1=10 b2=9e b3=e7 b4=00 b5=00 b6=00 b7=00
+I (21068) usb_dap_frontend: USB rsp ch=0 req_cmd=0x12 rsp_len=2 rsp=12 00 00 00 00 00 00 00
+I (21073) usb_dap_frontend: USB req ch=0 len=9 cmd=0x12 b1=33 b2=ff b3=ff b4=ff b5=ff b6=ff b7=ff
+I (21083) usb_dap_frontend: USB rsp ch=0 req_cmd=0x12 rsp_len=2 rsp=12 00 00 00 00 00 00 00
+I (21090) usb_dap_frontend: USB req ch=0 len=3 cmd=0x12 b1=08 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (21100) usb_dap_frontend: USB rsp ch=0 req_cmd=0x12 rsp_len=2 rsp=12 00 00 00 00 00 00 00
+I (21107) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=02 b4=00 b5=00 b6=00 b7=00
+I (21122) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 77 24 a0 6b 00
+I (21124) usb_dap_frontend: USB req ch=0 len=3 cmd=0x12 b1=08 b2=00 b3=00 b4=00 b5=00 b6=00 b7=00
+I (21133) usb_dap_frontend: USB rsp ch=0 req_cmd=0x12 rsp_len=2 rsp=12 00 00 00 00 00 00 00
+I (21140) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=02 b4=00 b5=00 b6=00 b7=00
+I (21150) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 77 24 a0 6b 00
+I (21157) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=04 b4=00 b5=00 b6=00 b7=50
+I (21166) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21173) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (21184) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 40 00 00 f8 00
+I (21190) usb_dap_frontend: USB req ch=0 len=6 cmd=0x08 b1=00 b2=1e b3=00 b4=00 b5=00 b6=00 b7=00
+I (21208) usb_dap_frontend: USB rsp ch=0 req_cmd=0x08 rsp_len=2 rsp=08 00 00 00 00 00 00 00
+I (21209) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=04 b4=00 b5=0f b6=00 b7=50
+I (21248) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21249) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=00 b5=00 b6=00 b7=00
+I (21269) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21271) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=f0 b5=00 b6=00 b7=00
+I (21277) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21284) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=0f b4=00 b5=00 b6=00 b7=00
+I (21294) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 01 00 77 84 00
+I (21301) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=00 b5=00 b6=00 b7=00
+I (21318) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21319) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=03 b4=00 b5=00 b6=00 b7=00
+I (21327) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 52 00 80 0b 00
+I (21334) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=01 b4=60 b5=00 b6=00 b7=03
+I (21344) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21351) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=03 b4=00 b5=00 b6=00 b7=00
+I (21361) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 60 00 80 03 00
+I (21368) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=01 b4=61 b5=00 b6=00 b7=03
+I (21377) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21384) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=03 b4=00 b5=00 b6=00 b7=00
+I (21394) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 61 00 80 03 00
+I (21401) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=01 b4=52 b5=00 b6=00 b7=03
+I (21434) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21435) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=f0 b5=00 b6=00 b7=02
+I (21442) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21448) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=0b b4=00 b5=00 b6=00 b7=00
+I (21458) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 03 00 0e e0 00
+I (21465) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=0f b4=00 b5=00 b6=00 b7=00
+I (21475) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 02 00 77 54 00
+I (21482) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=00 b5=00 b6=00 b7=02
+I (21491) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21498) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=01 b4=12 b5=00 b6=00 b7=80
+I (21510) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21515) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=e4 b5=0f b6=0e b7=e0
+I (21526) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21532) usb_dap_frontend: USB req ch=0 len=5 cmd=0x06 b1=00 b2=01 b3=00 b4=0f b5=00 b6=00 b7=00
+I (21542) usb_dap_frontend: USB rsp ch=0 req_cmd=0x06 rsp_len=8 rsp=06 01 00 01 04 00 00 00
+I (21548) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (21558) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 40 0f 00 f8 00
+I (21565) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=e8 b5=0f b6=0e b7=e0
+I (21575) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21582) usb_dap_frontend: USB req ch=0 len=5 cmd=0x06 b1=00 b2=01 b3=00 b4=0f b5=00 b6=00 b7=00
+I (21591) usb_dap_frontend: USB rsp ch=0 req_cmd=0x06 rsp_len=8 rsp=06 01 00 01 0a 00 00 00
+I (21598) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (21619) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 40 0f 00 f8 00
+I (21620) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=04 b5=10 b6=0e b7=e0
+I (21627) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21634) usb_dap_frontend: USB req ch=0 len=5 cmd=0x06 b1=00 b2=01 b3=00 b4=0f b5=00 b6=00 b7=00
+I (21643) usb_dap_frontend: USB rsp ch=0 req_cmd=0x06 rsp_len=8 rsp=06 01 00 01 3f 00 77 00
+I (21650) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (21660) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 40 0f 00 f8 00
+I (21667) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=04 b5=10 b6=0e b7=e0
+I (21678) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21684) usb_dap_frontend: USB req ch=0 len=9 cmd=0x06 b1=00 b2=01 b3=00 b4=0d b5=3f b6=00 b7=77
+I (21693) usb_dap_frontend: USB rsp ch=0 req_cmd=0x06 rsp_len=4 rsp=06 01 00 01 00 00 00 00
+I (21700) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (21715) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 40 0f 00 f8 00
+I (21717) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=04 b5=10 b6=0e b7=e0
+I (21744) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21746) usb_dap_frontend: USB req ch=0 len=9 cmd=0x06 b1=00 b2=01 b3=00 b4=0d b5=3f b6=00 b7=77
+I (21754) usb_dap_frontend: USB rsp ch=0 req_cmd=0x06 rsp_len=4 rsp=06 01 00 01 00 00 00 00
+I (21759) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (21772) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 40 0f 00 f8 00
+I (21776) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=34 b5=10 b6=0e b7=e0
+I (21790) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21793) usb_dap_frontend: USB req ch=0 len=9 cmd=0x06 b1=00 b2=01 b3=00 b4=0d b5=40 b6=00 b7=00
+I (21802) usb_dap_frontend: USB rsp ch=0 req_cmd=0x06 rsp_len=4 rsp=06 01 00 01 00 00 00 00
+I (21809) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (21826) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 40 0f 00 f8 00
+I (21827) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=3c b5=10 b6=0e b7=e0
+I (21836) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21843) usb_dap_frontend: USB req ch=0 len=9 cmd=0x06 b1=00 b2=01 b3=00 b4=0d b5=ff b6=03 b7=e0
+I (21852) usb_dap_frontend: USB rsp ch=0 req_cmd=0x06 rsp_len=4 rsp=06 01 00 01 00 00 00 00
+I (21859) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (21869) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 40 0f 00 f8 00
+I (21876) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=4c b5=10 b6=0e b7=e0
+I (21887) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21893) usb_dap_frontend: USB req ch=0 len=9 cmd=0x06 b1=00 b2=01 b3=00 b4=0d b5=03 b6=00 b7=07
+I (21910) usb_dap_frontend: USB rsp ch=0 req_cmd=0x06 rsp_len=4 rsp=06 01 00 01 00 00 00 00
+I (21911) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (21924) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 40 0f 00 f8 00
+I (21926) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=54 b5=10 b6=0e b7=e0
+I (21944) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (21945) usb_dap_frontend: USB req ch=0 len=9 cmd=0x06 b1=00 b2=01 b3=00 b4=0d b5=80 b6=1e b7=04
+I (21970) usb_dap_frontend: USB rsp ch=0 req_cmd=0x06 rsp_len=4 rsp=06 01 00 01 00 00 00 00
+I (21971) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (21980) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 40 0f 00 f8 00
+I (21984) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=f0 b5=00 b6=00 b7=02
+I (21994) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (22001) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=0b b4=00 b5=00 b6=00 b7=00
+I (22011) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 03 00 0e e0 00
+I (22018) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=00 b5=00 b6=00 b7=02
+I (22027) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (22034) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=01 b4=12 b5=00 b6=00 b7=80
+I (22044) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (22051) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=e4 b5=0f b6=0e b7=e0
+I (22074) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (22076) usb_dap_frontend: USB req ch=0 len=5 cmd=0x06 b1=00 b2=01 b3=00 b4=0f b5=00 b6=00 b7=00
+I (22089) usb_dap_frontend: USB rsp ch=0 req_cmd=0x06 rsp_len=8 rsp=06 01 00 01 04 00 00 00
+I (22090) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (22099) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 40 0f 00 f8 00
+I (22106) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=e8 b5=0f b6=0e b7=e0
+I (22125) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (22126) usb_dap_frontend: USB req ch=0 len=5 cmd=0x06 b1=00 b2=01 b3=00 b4=0f b5=00 b6=00 b7=00
+I (22133) usb_dap_frontend: USB rsp ch=0 req_cmd=0x06 rsp_len=8 rsp=06 01 00 01 0a 00 00 00
+I (22139) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (22152) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 40 0f 00 f8 00
+I (22156) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=00 b5=00 b6=00 b7=00
+I (22166) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (22173) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=01 b4=52 b5=00 b6=00 b7=03
+I (22182) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (22189) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=c8 b5=3f b6=04 b7=e0
+I (22199) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 00 08 04 00 00
+I (22206) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=00 b5=00 b6=00 b7=02
+I (22216) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (22223) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=c8 b5=1f b6=0f b7=e0
+I (22234) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 00 08 04 00 00
+I (22239) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=08 b4=00 b5=00 b6=00 b7=00
+I (22255) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (22256) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=fc b5=ed b6=00 b7=e0
+I (22266) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22273) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=00 b5=ed b6=00 b7=e0
+I (22282) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 71 c2 1f 41 00
+I (22289) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=40 b5=ef b6=00 b7=e0
+I (22299) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 21 02 11 10 00
+I (22306) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=01 b4=52 b5=00 b6=00 b7=0b
+I (22316) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00
+I (22323) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=78 b5=ed b6=00 b7=e0
+I (22332) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 03 00 00 09 00
+I (22339) usb_dap_frontend: USB req ch=0 len=4 cmd=0x05 b1=00 b2=01 b3=06 b4=00 b5=00 b6=00 b7=00
+I (22349) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 01 01 40 0f 00 f8 00
+I (22356) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=f0 b5=ed b6=00 b7=e0
+I (22366) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 03 00 03 00 00
+I (22373) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=f0 b5=ed b6=00 b7=e0
+I (22383) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22389) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=f0 b5=ed b6=00 b7=e0
+I (22399) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22406) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=f0 b5=ed b6=00 b7=e0
+I (22416) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 03 00 03 00 00
+I (22423) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=f0 b5=ed b6=00 b7=e0
+I (22433) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22440) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=fc b5=ed b6=00 b7=e0
+I (22449) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 00 00 00 01 00
+I (22456) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=00 b5=20 b6=00 b7=e0
+I (22468) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 80 00 00 10 00
+I (22473) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=00 b5=10 b6=00 b7=e0
+I (22484) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 01 00 00 40 00
+I (22490) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=24 b5=10 b6=00 b7=e0
+I (22502) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22506) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=24 b5=10 b6=00 b7=e0
+I (22518) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 1f 00 00 00 00
+I (22523) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=24 b5=10 b6=00 b7=e0
+I (22535) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22540) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=28 b5=10 b6=00 b7=e0
+I (22559) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22560) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=28 b5=10 b6=00 b7=e0
+I (22568) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 00 00 00 00 00
+I (22574) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=28 b5=10 b6=00 b7=e0
+I (22594) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22595) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=28 b5=10 b6=00 b7=e0
+I (22606) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 80 00 00 00 00
+I (22609) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=28 b5=10 b6=00 b7=e0
+I (22618) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22625) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=38 b5=10 b6=00 b7=e0
+I (22644) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22645) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=38 b5=10 b6=00 b7=e0
+I (22659) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 00 03 00 00 00
+I (22660) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=38 b5=10 b6=00 b7=e0
+I (22675) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22676) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=38 b5=10 b6=00 b7=e0
+I (22696) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 00 02 00 00 00
+I (22697) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=38 b5=10 b6=00 b7=e0
+I (22704) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22711) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=48 b5=10 b6=00 b7=e0
+I (22725) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22727) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=48 b5=10 b6=00 b7=e0
+I (22740) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 00 00 00 00 00
+I (22744) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=48 b5=10 b6=00 b7=e0
+I (22754) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22761) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=48 b5=10 b6=00 b7=e0
+I (22771) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 00 00 00 00 00
+I (22777) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=48 b5=10 b6=00 b7=e0
+I (22787) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22794) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=58 b5=10 b6=00 b7=e0
+I (22804) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22811) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=58 b5=10 b6=00 b7=e0
+I (22821) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 00 00 00 00 00
+I (22827) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=58 b5=10 b6=00 b7=e0
+I (22842) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22844) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=58 b5=10 b6=00 b7=e0
+I (22858) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 00 00 00 00 00
+I (22861) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=58 b5=10 b6=00 b7=e0
+I (22871) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22878) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=00 b5=20 b6=00 b7=e0
+I (22888) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22894) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=28 b5=10 b6=00 b7=e0
+I (22904) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22911) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=38 b5=10 b6=00 b7=e0
+I (22921) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22928) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=48 b5=10 b6=00 b7=e0
+I (22944) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22945) usb_dap_frontend: USB req ch=0 len=13 cmd=0x05 b1=00 b2=02 b3=05 b4=58 b5=10 b6=00 b7=e0
+I (22955) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 02 01 00 00 00 00 00
+I (22961) usb_dap_frontend: USB req ch=0 len=9 cmd=0x05 b1=00 b2=02 b3=05 b4=04 b5=e0 b6=00 b7=e0
+I (22976) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=7 rsp=05 02 01 04 00 00 00 00
+I (22978) usb_dap_frontend: USB req ch=0 len=8 cmd=0x05 b1=00 b2=01 b3=05 b4=00 b5=10 b6=00 b7=e0
+I (22993) usb_dap_frontend: USB rsp ch=0 req_cmd=0x05 rsp_len=3 rsp=05 01 01 00 00 00 00 00

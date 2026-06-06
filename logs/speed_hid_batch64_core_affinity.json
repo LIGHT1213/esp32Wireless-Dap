@@ -1,0 +1,12 @@
+{
+    "round":  "hid_batch64_core_affinity",
+    "timestamp":  "2026-04-29T19:50:21",
+    "success":  true,
+    "exit_code":  0,
+    "wall_seconds":  89.549,
+    "data_bytes":  1056792,
+    "hex_file_bytes":  2972557,
+    "effective_kib_per_sec":  11.525,
+    "hex_file_kib_per_sec":  32.417,
+    "target_kib_per_sec":  34.448
+}

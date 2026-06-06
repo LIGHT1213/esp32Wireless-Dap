@@ -1,14 +1,5 @@
 idf_component_register(
-    SRCS "app_main.c"
-    REQUIRES
-        nvs_flash
-        esp_netif
-        esp_event
-        wifi_link
-        dap_backend
-        swd_engine
-        board_support
-        uart_bridge
-        ota_service
-        wdap_runtime
+    SRCS "backend_main.c"
+    INCLUDE_DIRS "."
+    REQUIRES board_config wdap_transport daplink_port backend_swd_gpio
 )

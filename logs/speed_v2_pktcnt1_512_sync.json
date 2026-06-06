@@ -1,0 +1,11 @@
+{
+    "round": "v2_pktcnt1_512_sync",
+    "timestamp": "2026-04-29T10:46:50",
+    "success": false,
+    "exit_code": 1,
+    "wall_seconds": 7.683,
+    "data_bytes": 1056792,
+    "effective_kib_per_sec": 0,
+    "target_kib_per_sec": 34.448,
+    "target_percent_of_43_06": 0
+}
